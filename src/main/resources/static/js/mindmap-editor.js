@@ -6,42 +6,6 @@ const IMAGE_NODE_HEIGHT = 130;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
-const DEFAULT_MAP_STYLE = "CLASSIC";
-
-const THEME_PRESETS = {
-    CLASSIC: {
-        pageClass: "theme-classic",
-        canvasBackground: "linear-gradient(#fff, #fbfdff)",
-        nodePalette: ["#FFD966", "#9FC5E8", "#B6D7A8", "#F4CCCC", "#F9CB9C", "#D9D2E9"],
-        connectorPalette: ["#7c8a9a"]
-    },
-    PLAYFUL: {
-        pageClass: "theme-playful",
-        canvasBackground: "linear-gradient(180deg, #fff7ea 0%, #edf8ff 100%)",
-        nodePalette: ["#FFD966", "#FFB5E8", "#A0E7E5", "#B4F8C8", "#FFC09F", "#C7CEEA"],
-        connectorPalette: ["#ff7aa2", "#6bcb77", "#4d96ff", "#ffb347", "#9d6bff"]
-    },
-    OCEAN: {
-        pageClass: "theme-ocean",
-        canvasBackground: "linear-gradient(180deg, #e0f2fe 0%, #ecfeff 100%)",
-        nodePalette: ["#8ecae6", "#219ebc", "#90e0ef", "#ade8f4", "#caf0f8", "#7bdff2"],
-        connectorPalette: ["#0f4c81", "#0077b6", "#0096c7", "#00b4d8"]
-    },
-    CANDY: {
-        pageClass: "theme-candy",
-        canvasBackground: "linear-gradient(180deg, #fff0f6 0%, #f5f3ff 100%)",
-        nodePalette: ["#ff8fab", "#ffc6ff", "#bde0fe", "#caffbf", "#ffd6a5", "#f1c0e8"],
-        connectorPalette: ["#ff5d8f", "#7b2cbf", "#3a86ff", "#ff9f1c", "#2ec4b6"]
-    }
-};
-const HAND_DRAWN_BRANCH_COLORS = ["#ef476f", "#118ab2", "#06d6a0", "#f78c27", "#9b5de5", "#ff006e"];
-const HAND_DRAWN_NODE_COLORS_BY_DEPTH = {
-    0: "#fff176",
-    1: "#ffeaa7",
-    2: "#d4f1f4",
-    3: "#f7d6e0",
-    4: "#d8f3dc"
-};
 
 const state = {
     map: structuredClone(initialMap),
@@ -50,7 +14,6 @@ const state = {
     resize: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
-    mapStyleTimer: null,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -67,8 +30,8 @@ const imageHeightInput = document.getElementById("node-image-height");
 const imageWidthValue = document.getElementById("node-image-width-value");
 const imageHeightValue = document.getElementById("node-image-height-value");
 const autosaveStatus = document.getElementById("autosave-status");
-const mapThemeInput = document.getElementById("map-theme");
-const editorPage = document.querySelector(".editor-page");
+const nodeEmojiInput = document.getElementById("node-emoji");
+const branchTextInput = document.getElementById("branch-text");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
@@ -99,10 +62,6 @@ function getNodeImageSize(node) {
     };
 }
 
-function getActiveTheme() {
-    return THEME_PRESETS[state.map.stylePreset] || THEME_PRESETS[DEFAULT_MAP_STYLE];
-}
-
 function buildDepthMap(nodes) {
     const byId = new Map(nodes.map(node => [node.id, node]));
     const depthMap = new Map();
@@ -129,27 +88,6 @@ function buildDepthMap(nodes) {
         resolveDepth(node);
     }
     return depthMap;
-}
-
-function getBranchRootId(node, byId) {
-    let current = node;
-    while (current?.parentId != null && byId.has(current.parentId)) {
-        const parent = byId.get(current.parentId);
-        if (parent.parentId == null) return current.id;
-        current = parent;
-    }
-    return node.id;
-}
-
-function colorForDepth(depth) {
-    return HAND_DRAWN_NODE_COLORS_BY_DEPTH[Math.min(depth, 4)] || HAND_DRAWN_NODE_COLORS_BY_DEPTH[4];
-}
-
-function applyMapThemeVisuals() {
-    const theme = getActiveTheme();
-    editorPage.classList.remove("theme-classic", "theme-playful", "theme-ocean", "theme-candy");
-    editorPage.classList.add(theme.pageClass);
-    svg.style.background = theme.canvasBackground;
 }
 
 function renderConnectorDefs() {
@@ -186,11 +124,9 @@ function renderConnectorDefs() {
     svg.appendChild(defs);
 }
 
-function applyBranchStyle(path, node, connectorIndex, depth = 1) {
-    const theme = getActiveTheme();
+function applyBranchStyle(path, node, depth = 1) {
     const style = (node.branchStyle || "SOLID").toUpperCase();
-    const fallbackColor = theme.connectorPalette[connectorIndex % theme.connectorPalette.length];
-    const strokeColor = node.branchColor || fallbackColor || "#7c8a9a";
+    const strokeColor = node.branchColor || "#7c8a9a";
 
     path.setAttribute("stroke", strokeColor);
     const baseWidth = Math.max(2, 6 - Math.min(depth, 4));
@@ -232,10 +168,8 @@ function applyBranchStyle(path, node, connectorIndex, depth = 1) {
 function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
-    applyMapThemeVisuals();
     const depthMap = buildDepthMap(state.map.nodes);
 
-    let connectorIndex = 0;
     for (const node of state.map.nodes) {
         if (node.parentId != null) {
             const parent = getNodeById(node.parentId);
@@ -255,8 +189,9 @@ function render() {
 
                 path.setAttribute("class", "connector");
                 path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-                applyBranchStyle(path, node, connectorIndex++, depth);
+                applyBranchStyle(path, node, depth);
                 svg.appendChild(path);
+                renderBranchLabel(node, cx, cy, x1, y1, x2, y2);
             }
         }
     }
@@ -362,34 +297,44 @@ function renderImageResizeHandle(group, node, nodeWidth) {
 function renderNodeActionButtons(group, node, nodeWidth) {
     const actions = [
         {
+            key: "edit-branch-text",
+            label: "TXT",
+            title: "Testo ramo",
+            onClick: () => quickEditBranchText(node.id)
+        },
+        {
+            key: "edit-emoji",
+            label: "😊",
+            title: "Emoji nodo",
+            onClick: () => quickEditEmoji(node.id)
+        },
+        {
             key: "delete-node",
-            label: "🗑",
+            label: "X",
             title: "Elimina nodo",
-            onClick: () => deleteNodeWithChecks(node.id),
-            x: node.x + nodeWidth - 72
+            onClick: () => deleteNodeWithChecks(node.id)
         },
         {
             key: "add-image",
-            label: "🖼",
+            label: "Img",
             title: "Aggiungi immagine",
-            onClick: () => startImageUploadForNode(node.id),
-            x: node.x + nodeWidth - 48
+            onClick: () => startImageUploadForNode(node.id)
         },
         {
             key: "add-child",
             label: "+",
             title: "Aggiungi nodo figlio",
-            onClick: () => addChildNode(node.id),
-            x: node.x + nodeWidth - 24
+            onClick: () => addChildNode(node.id)
         }
     ];
 
-    for (const action of actions) {
+    actions.forEach((action, index) => {
+        const x = node.x + nodeWidth - 24 - (index * 40);
         const button = document.createElementNS(SVG_NS, "g");
         button.setAttribute("class", "node-action-button");
         button.dataset.nodeId = node.id;
         button.dataset.action = action.key;
-        button.setAttribute("transform", `translate(${action.x}, ${node.y + 16})`);
+        button.setAttribute("transform", `translate(${x}, ${node.y + 18})`);
         button.addEventListener("mousedown", event => {
             event.stopPropagation();
             event.preventDefault();
@@ -401,15 +346,18 @@ function renderNodeActionButtons(group, node, nodeWidth) {
             await action.onClick();
         });
 
-        const circle = document.createElementNS(SVG_NS, "circle");
-        circle.setAttribute("r", "10");
-        circle.setAttribute("cx", "0");
-        circle.setAttribute("cy", "0");
-        button.appendChild(circle);
+        const rect = document.createElementNS(SVG_NS, "rect");
+        rect.setAttribute("x", "-18");
+        rect.setAttribute("y", "-13");
+        rect.setAttribute("rx", "8");
+        rect.setAttribute("ry", "8");
+        rect.setAttribute("width", "36");
+        rect.setAttribute("height", "26");
+        button.appendChild(rect);
 
         const icon = document.createElementNS(SVG_NS, "text");
         icon.setAttribute("x", "0");
-        icon.setAttribute("y", "1");
+        icon.setAttribute("y", "0");
         icon.setAttribute("text-anchor", "middle");
         icon.setAttribute("dominant-baseline", "middle");
         icon.setAttribute("class", "node-action-icon");
@@ -421,7 +369,21 @@ function renderNodeActionButtons(group, node, nodeWidth) {
         button.appendChild(tooltip);
 
         group.appendChild(button);
-    }
+    });
+}
+
+function renderBranchLabel(node, cx, cy, x1, y1, x2, y2) {
+    const branchText = (node.branchText || "").trim();
+    if (!branchText) return;
+    const label = document.createElementNS(SVG_NS, "text");
+    label.setAttribute("class", "branch-label");
+    label.setAttribute("x", String(cx));
+    label.setAttribute("y", String(cy - 6));
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = truncate(branchText, 26);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+    label.setAttribute("transform", `rotate(${Math.max(-24, Math.min(24, angle))}, ${cx}, ${cy - 6})`);
+    svg.appendChild(label);
 }
 
 function getNodeImageBounds(node, nodeWidth) {
@@ -447,9 +409,17 @@ function normalizeNodeText(value) {
 }
 
 function getNodeDisplayLines(node, maxLineLength) {
-    return normalizeNodeText(node.text || "Nodo")
+    const prefix = normalizeNodeEmoji(node.emoji);
+    const base = normalizeNodeText(node.text || "Nodo");
+    const withEmoji = prefix ? `${prefix} ${base}` : base;
+    return withEmoji
         .split("\n")
         .map(line => truncate(line, maxLineLength));
+}
+
+function normalizeNodeEmoji(value) {
+    const emoji = (value || "").trim();
+    return emoji.length ? [...emoji].slice(0, 2).join("") : "";
 }
 
 function selectNode(nodeId) {
@@ -457,6 +427,8 @@ function selectNode(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return;
     textInput.value = node.text || "";
+    nodeEmojiInput.value = node.emoji || "";
+    branchTextInput.value = node.branchText || "";
     colorInput.value = node.color || "#FFD966";
     branchColorInput.value = node.branchColor || "#7c8a9a";
     branchStyleInput.value = node.branchStyle || "SOLID";
@@ -467,7 +439,6 @@ function selectNode(nodeId) {
     imageHeightInput.value = imageSize.height;
     updateImageSizeLabels();
     updateImagePreview(node.imageUri || "");
-    mapThemeInput.value = state.map.stylePreset || DEFAULT_MAP_STYLE;
     render();
 }
 
@@ -551,30 +522,6 @@ document.getElementById("save-node-btn").addEventListener("click", async () => {
     await saveNode(node);
 });
 
-document.getElementById("apply-theme-btn").addEventListener("click", async () => {
-    await saveMapStyle(mapThemeInput.value);
-});
-
-document.getElementById("apply-branch-style-all-btn").addEventListener("click", async () => {
-    const selected = getNodeById(state.selectedNodeId);
-    if (!selected) return;
-    applyFormToNode(selected);
-    const updates = state.map.nodes
-        .filter(node => node.parentId != null)
-        .map(node => {
-            node.branchStyle = selected.branchStyle;
-            node.branchColor = selected.branchColor;
-            return saveNode(node);
-        });
-    render();
-    await Promise.all(updates);
-    autosaveStatus.textContent = "Stile rami applicato a tutta la mappa.";
-});
-
-document.getElementById("render-sketch-btn").addEventListener("click", async () => {
-    await applyHandDrawnRenderPass();
-});
-
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -640,19 +587,13 @@ imageHeightInput.addEventListener("input", () => {
     render();
 });
 
-const autosubmitFields = [textInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
+const autosubmitFields = [textInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
 for (const field of autosubmitFields) {
     const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
 }
 imageWidthInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
 imageHeightInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
-mapThemeInput.addEventListener("change", () => {
-    state.map.stylePreset = mapThemeInput.value;
-    render();
-    scheduleMapStyleAutosave();
-});
-
 function updateImagePreview(uri) {
     if (uri) {
         imagePreview.src = uri;
@@ -665,6 +606,8 @@ function updateImagePreview(uri) {
 
 function applyFormToNode(node) {
     node.text = normalizeNodeText(textInput.value);
+    node.emoji = normalizeNodeEmoji(nodeEmojiInput.value);
+    node.branchText = (branchTextInput.value || "").trim();
     node.color = colorInput.value;
     node.branchColor = branchColorInput.value;
     node.branchStyle = branchStyleInput.value;
@@ -698,6 +641,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
     const node = await createNode({
         parentId: null,
         text: "Nuovo nodo",
+        emoji: null,
+        branchText: null,
         x: 180 + Math.round(Math.random() * 700),
         y: 120 + Math.round(Math.random() * 500),
         color: "#D9D2E9",
@@ -760,70 +705,6 @@ function scheduleAutosave(node) {
     state.autosaveTimer = setTimeout(() => saveNode(node), 500);
 }
 
-function scheduleMapStyleAutosave() {
-    autosaveStatus.textContent = "Stile mappa in salvataggio automatico...";
-    clearTimeout(state.mapStyleTimer);
-    state.mapStyleTimer = setTimeout(() => saveMapStyle(state.map.stylePreset), 400);
-}
-
-async function saveMapStyle(stylePreset) {
-    const normalized = stylePreset || DEFAULT_MAP_STYLE;
-    state.map.stylePreset = normalized;
-    mapThemeInput.value = normalized;
-    applyMapThemeVisuals();
-    autosaveStatus.textContent = "Salvataggio stile mappa...";
-    const response = await fetch(`/api/maps/${state.map.id}/style`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stylePreset: normalized })
-    });
-    if (response.ok) {
-        const updatedMap = await response.json();
-        state.map.stylePreset = updatedMap.stylePreset || normalized;
-    }
-    autosaveStatus.textContent = "Stile mappa salvato.";
-    render();
-}
-
-async function applyHandDrawnRenderPass() {
-    if (!state.map.nodes.length) return;
-    autosaveStatus.textContent = "Render finale in corso...";
-    await saveMapStyle("PLAYFUL");
-
-    const byId = new Map(state.map.nodes.map(node => [node.id, node]));
-    const depthMap = buildDepthMap(state.map.nodes);
-    const branchColorByTopLevel = new Map();
-    let paletteIndex = 0;
-
-    for (const node of state.map.nodes) {
-        const depth = depthMap.get(node.id) || 0;
-        if (depth === 0) {
-            node.color = "#fff176";
-            node.fontSize = 30;
-            node.branchStyle = "BOLD";
-            node.branchColor = HAND_DRAWN_BRANCH_COLORS[paletteIndex % HAND_DRAWN_BRANCH_COLORS.length];
-            paletteIndex += 1;
-            continue;
-        }
-
-        const topLevelBranchNodeId = getBranchRootId(node, byId);
-        if (!branchColorByTopLevel.has(topLevelBranchNodeId)) {
-            branchColorByTopLevel.set(
-                topLevelBranchNodeId,
-                HAND_DRAWN_BRANCH_COLORS[branchColorByTopLevel.size % HAND_DRAWN_BRANCH_COLORS.length]
-            );
-        }
-        node.branchColor = branchColorByTopLevel.get(topLevelBranchNodeId);
-        node.color = colorForDepth(depth);
-        node.fontSize = Math.max(16, 26 - depth * 2);
-        node.branchStyle = depth <= 1 ? "BOLD" : depth <= 2 ? "SOLID" : "DASHED";
-    }
-
-    render();
-    await Promise.all(state.map.nodes.map(node => saveNode(node)));
-    autosaveStatus.textContent = "Render finale applicato: stile hand-drawn pronto.";
-}
-
 async function fetchMap() {
     const response = await fetch(`/api/maps/${state.map.id}`);
     return response.json();
@@ -837,9 +718,13 @@ function startImageUploadForNode(nodeId) {
 async function addChildNode(parentId) {
     const parent = getNodeById(parentId);
     if (!parent) return;
+    const branchText = window.prompt("Testo del ramo (facoltativo):", "") || "";
+    const nodeText = window.prompt("Testo del nuovo nodo:", "Nuovo ramo") || "Nuovo ramo";
     const node = await createNode({
         parentId: parent.id,
-        text: "Nuovo ramo",
+        text: normalizeNodeText(nodeText),
+        emoji: null,
+        branchText: branchText.trim(),
         x: parent.x + 220,
         y: parent.y + 90,
         color: "#9FC5E8",
@@ -878,6 +763,28 @@ async function quickEdit(nodeId) {
     textInput.setSelectionRange(0, textInput.value.length);
 }
 
+async function quickEditBranchText(nodeId) {
+    const node = getNodeById(nodeId);
+    if (!node) return;
+    const value = window.prompt("Inserisci il testo del ramo:", node.branchText || "");
+    if (value === null) return;
+    node.branchText = value.trim();
+    selectNode(nodeId);
+    render();
+    await saveNode(node);
+}
+
+async function quickEditEmoji(nodeId) {
+    const node = getNodeById(nodeId);
+    if (!node) return;
+    const value = window.prompt("Inserisci una emoji per il nodo:", node.emoji || "");
+    if (value === null) return;
+    node.emoji = normalizeNodeEmoji(value);
+    selectNode(nodeId);
+    render();
+    await saveNode(node);
+}
+
 function exportPng() {
     const clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", SVG_NS);
@@ -908,7 +815,5 @@ function slugify(value) {
         .replace(/(^-|-$)/g, "") || "mappa";
 }
 
-state.map.stylePreset = state.map.stylePreset || DEFAULT_MAP_STYLE;
-mapThemeInput.value = state.map.stylePreset;
 selectNode(state.map.nodes[0]?.id ?? null);
 render();

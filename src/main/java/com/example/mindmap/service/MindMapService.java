@@ -54,6 +54,8 @@ public class MindMapService {
         root.setMapId(savedMap.getId());
         root.setParentId(null);
         root.setText(savedMap.getTitle());
+        root.setEmoji(null);
+        root.setBranchText(null);
         root.setX(620);
         root.setY(260);
         root.setColor("#FFD966");
@@ -122,6 +124,8 @@ public class MindMapService {
         node.setMapId(mapId);
         node.setParentId(request.getParentId());
         node.setText(request.getText() == null || request.getText().isBlank() ? "Nuovo nodo" : request.getText().trim());
+        node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
+        node.setBranchText(normalizeBranchText(request.getBranchText()));
         node.setX(request.getX() == null ? 300 : request.getX());
         node.setY(request.getY() == null ? 200 : request.getY());
         node.setColor(request.getColor() == null ? "#9FC5E8" : request.getColor());
@@ -141,6 +145,8 @@ public class MindMapService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
 
         if (request.getText() != null) node.setText(request.getText().trim().isEmpty() ? "Nodo" : request.getText().trim());
+        if (request.getEmoji() != null) node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
+        if (request.getBranchText() != null) node.setBranchText(normalizeBranchText(request.getBranchText()));
         if (request.getX() != null) node.setX(request.getX());
         if (request.getY() != null) node.setY(request.getY());
         if (request.getColor() != null) node.setColor(request.getColor());
@@ -188,6 +194,8 @@ public class MindMapService {
         node.setMapId(mapId);
         node.setParentId(parentId);
         node.setText(text);
+        node.setEmoji(null);
+        node.setBranchText(null);
         node.setX(x);
         node.setY(y);
         node.setColor(color);
@@ -218,6 +226,23 @@ public class MindMapService {
         return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, imageSize));
     }
 
+    private String normalizeNodeEmoji(String emoji) {
+        if (emoji == null) return null;
+        String value = emoji.trim();
+        if (value.isEmpty()) return null;
+        return value.codePoints()
+                .limit(2)
+                .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                .toString();
+    }
+
+    private String normalizeBranchText(String branchText) {
+        if (branchText == null) return null;
+        String value = branchText.trim();
+        if (value.isEmpty()) return null;
+        return value.length() > 120 ? value.substring(0, 120) : value;
+    }
+
     private String normalizeStylePreset(String stylePreset) {
         if (stylePreset == null || stylePreset.isBlank()) return DEFAULT_STYLE_PRESET;
         return switch (stylePreset.trim().toUpperCase()) {
@@ -231,6 +256,8 @@ public class MindMapService {
         dto.setId(node.getId());
         dto.setParentId(node.getParentId());
         dto.setText(node.getText());
+        dto.setEmoji(node.getEmoji());
+        dto.setBranchText(node.getBranchText());
         dto.setX(node.getX());
         dto.setY(node.getY());
         dto.setColor(node.getColor());

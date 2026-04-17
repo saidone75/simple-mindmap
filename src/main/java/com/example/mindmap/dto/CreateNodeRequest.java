@@ -3,6 +3,8 @@ package com.example.mindmap.dto;
 public class CreateNodeRequest {
     private Long parentId;
     private String text;
+    private String emoji;
+    private String branchText;
     private Integer x;
     private Integer y;
     private String color;
@@ -18,6 +20,10 @@ public class CreateNodeRequest {
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+    public String getEmoji() { return emoji; }
+    public void setEmoji(String emoji) { this.emoji = emoji; }
+    public String getBranchText() { return branchText; }
+    public void setBranchText(String branchText) { this.branchText = branchText; }
     public Integer getX() { return x; }
     public void setX(Integer x) { this.x = x; }
     public Integer getY() { return y; }

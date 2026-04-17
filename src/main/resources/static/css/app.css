@@ -130,8 +130,8 @@ input[type="file"] {
 .back-link { color: var(--accent-dark); font-weight: 700; }
 .editor-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 18px;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 14px;
 }
 .canvas-panel { padding: 14px; overflow: auto; }
 .canvas-hint {
@@ -146,9 +146,9 @@ input[type="file"] {
     border: 1px dashed #d7dee7;
     border-radius: 20px;
 }
-.side-panel { padding: 18px; }
-.side-panel h2 { margin-top: 0; }
-.side-panel > * + * { margin-top: 12px; }
+.side-panel { padding: 12px; font-size: 0.92rem; }
+.side-panel h2 { margin-top: 0; margin-bottom: 8px; font-size: 1rem; }
+.side-panel > * + * { margin-top: 8px; }
 .image-preview-box {
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -202,50 +202,26 @@ input[type="file"] {
 .node-action-button {
     cursor: pointer;
 }
-.node-action-button circle {
+.node-action-button rect {
     fill: #f8fafc;
     stroke: #3b82f6;
     stroke-width: 2;
 }
-.node-action-button:hover circle {
+.node-action-button:hover rect {
     fill: #dbeafe;
 }
 .node-action-icon {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     fill: #1d4ed8;
     user-select: none;
     pointer-events: none;
 }
-.editor-page.theme-playful .canvas-panel {
-    border-color: #ffd6a5;
-    box-shadow: 0 14px 30px rgba(255, 149, 0, 0.16);
-}
-.editor-page.theme-playful .side-panel {
-    border-color: #ffcad4;
-}
-.editor-page.theme-playful #mindmap-canvas {
-    border-color: #ffc8dd;
-}
-.editor-page.theme-ocean .canvas-panel {
-    border-color: #90e0ef;
-    box-shadow: 0 14px 30px rgba(2, 132, 199, 0.15);
-}
-.editor-page.theme-ocean .side-panel {
-    border-color: #7dd3fc;
-}
-.editor-page.theme-ocean #mindmap-canvas {
-    border-color: #7dd3fc;
-}
-.editor-page.theme-candy .canvas-panel {
-    border-color: #f0abfc;
-    box-shadow: 0 14px 30px rgba(168, 85, 247, 0.18);
-}
-.editor-page.theme-candy .side-panel {
-    border-color: #e9d5ff;
-}
-.editor-page.theme-candy #mindmap-canvas {
-    border-color: #e9d5ff;
+.branch-label {
+    fill: #374151;
+    font-size: 13px;
+    font-weight: 700;
+    pointer-events: none;
 }
 @media (max-width: 980px) {
     .editor-layout { grid-template-columns: 1fr; }

@@ -22,27 +22,20 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo. Ogni nodo ha i tastini 🖼, + e 🗑 per immagine, figlio ed eliminazione. Se un nodo ha un'immagine, usa il pallino in basso a destra per ridimensionarla.</div>
+            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo. Usa i pulsanti sul nodo per testo ramo, emoji, immagine, figlio ed eliminazione.</div>
             <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
         </section>
 
         <aside class="side-panel">
             <h2>Nodo selezionato</h2>
-            <label for="map-theme">Stile mappa (tutta la mappa)</label>
-            <select id="map-theme">
-                <option value="CLASSIC">Classico</option>
-                <option value="PLAYFUL">Giocoso scuola primaria</option>
-                <option value="OCEAN">Oceano colorato</option>
-                <option value="CANDY">Candy / Fancy</option>
-            </select>
-            <div class="inline-actions">
-                <button type="button" id="apply-theme-btn" class="secondary-btn small-btn">Applica stile mappa</button>
-                <button type="button" id="apply-branch-style-all-btn" class="secondary-btn small-btn">Stile rami per tutta la mappa</button>
-                <button type="button" id="render-sketch-btn" class="secondary-btn small-btn full-row-btn">Render finale "hand-drawn"</button>
-            </div>
-
             <label for="node-text">Testo</label>
-            <textarea id="node-text" rows="6" maxlength="2000" placeholder="Scrivi su più righe, con punti elenco o numerazione..."></textarea>
+            <textarea id="node-text" rows="4" maxlength="2000" placeholder="Scrivi il testo del nodo..."></textarea>
+
+            <label for="node-emoji">Emoji nodo</label>
+            <input id="node-emoji" type="text" maxlength="4" placeholder="😀">
+
+            <label for="branch-text">Testo ramo</label>
+            <input id="branch-text" type="text" maxlength="120" placeholder="Etichetta del collegamento">
 
             <label for="node-color">Colore</label>
             <select id="node-color">
@@ -76,7 +69,7 @@
             <input id="node-image-url" type="url" placeholder="https://... oppure data:image/...">
             <div class="inline-actions">
                 <button type="button" id="apply-image-url-btn" class="secondary-btn small-btn">Usa link</button>
-                <button type="button" id="clear-image-btn" class="secondary-btn small-btn">Rimuovi immagine</button>
+                <button type="button" id="clear-image-btn" class="secondary-btn small-btn">Rimuovi</button>
             </div>
             <input id="node-image-upload" type="file" accept="image/*">
             <label for="node-image-width">Larghezza immagine: <span id="node-image-width-value">42</span>px</label>
