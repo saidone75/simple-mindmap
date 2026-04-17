@@ -5,13 +5,14 @@ const IMAGE_NODE_WIDTH = 220;
 const IMAGE_NODE_HEIGHT = 100;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
-const MAX_IMAGE_SIZE = 120;
+const MAX_IMAGE_SIZE = 240;
 
 const state = {
     map: structuredClone(initialMap),
     selectedNodeId: null,
     drag: null,
     resize: null,
+    pendingImageNodeId: null,
     autosaveTimer: null,
 };
 
@@ -98,6 +99,8 @@ function render() {
             }
         }
 
+        renderNodeActionButtons(group, node, width);
+
         const text = document.createElementNS(SVG_NS, "text");
         text.setAttribute("class", "node-text");
         text.setAttribute("x", node.x + width / 2);
@@ -154,6 +157,64 @@ function renderImageResizeHandle(group, node, nodeWidth) {
     handle.dataset.nodeId = node.id;
     handle.addEventListener("mousedown", startImageResize);
     group.appendChild(handle);
+}
+
+function renderNodeActionButtons(group, node, nodeWidth) {
+    const actions = [
+        {
+            key: "add-image",
+            label: "🖼",
+            title: "Aggiungi immagine",
+            onClick: () => startImageUploadForNode(node.id),
+            x: node.x + nodeWidth - 48
+        },
+        {
+            key: "add-child",
+            label: "+",
+            title: "Aggiungi nodo figlio",
+            onClick: () => addChildNode(node.id),
+            x: node.x + nodeWidth - 24
+        }
+    ];
+
+    for (const action of actions) {
+        const button = document.createElementNS(SVG_NS, "g");
+        button.setAttribute("class", "node-action-button");
+        button.dataset.nodeId = node.id;
+        button.dataset.action = action.key;
+        button.setAttribute("transform", `translate(${action.x}, ${node.y + 14})`);
+        button.addEventListener("mousedown", event => {
+            event.stopPropagation();
+            event.preventDefault();
+        });
+        button.addEventListener("click", async event => {
+            event.stopPropagation();
+            event.preventDefault();
+            selectNode(node.id);
+            await action.onClick();
+        });
+
+        const circle = document.createElementNS(SVG_NS, "circle");
+        circle.setAttribute("r", "10");
+        circle.setAttribute("cx", "0");
+        circle.setAttribute("cy", "0");
+        button.appendChild(circle);
+
+        const icon = document.createElementNS(SVG_NS, "text");
+        icon.setAttribute("x", "0");
+        icon.setAttribute("y", "1");
+        icon.setAttribute("text-anchor", "middle");
+        icon.setAttribute("dominant-baseline", "middle");
+        icon.setAttribute("class", "node-action-icon");
+        icon.textContent = action.label;
+        button.appendChild(icon);
+
+        const tooltip = document.createElementNS(SVG_NS, "title");
+        tooltip.textContent = action.title;
+        button.appendChild(tooltip);
+
+        group.appendChild(button);
+    }
 }
 
 function getNodeImageBounds(node, nodeWidth) {
@@ -296,10 +357,13 @@ imageUploadInput.addEventListener("change", event => {
     const reader = new FileReader();
     reader.onload = () => {
         const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        const targetNodeId = state.pendingImageNodeId ?? state.selectedNodeId;
+        const node = getNodeById(targetNodeId);
+        state.pendingImageNodeId = null;
+        event.target.value = "";
+        if (!node) return;
         imageUrlInput.value = dataUrl;
         updateImagePreview(dataUrl);
-        const node = getNodeById(state.selectedNodeId);
-        if (!node) return;
         node.imageUri = dataUrl;
         ensureNodeImageSize(node);
         imageWidthInput.value = node.imageWidth;
@@ -388,21 +452,7 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
 document.getElementById("add-child-btn").addEventListener("click", async () => {
     const parent = getNodeById(state.selectedNodeId);
     if (!parent) return alert("Seleziona prima un nodo.");
-    const node = await createNode({
-        parentId: parent.id,
-        text: "Nuovo ramo",
-        x: parent.x + 220,
-        y: parent.y + 90,
-        color: "#9FC5E8",
-        fontSize: 18,
-        shape: "ROUNDED",
-        imageUri: null,
-        imageWidth: DEFAULT_IMAGE_SIZE,
-        imageHeight: DEFAULT_IMAGE_SIZE
-    });
-    state.map.nodes.push(node);
-    selectNode(node.id);
-    render();
+    await addChildNode(parent.id);
 });
 
 document.getElementById("delete-node-btn").addEventListener("click", async () => {
@@ -451,6 +501,31 @@ function scheduleAutosave(node) {
 async function fetchMap() {
     const response = await fetch(`/api/maps/${state.map.id}`);
     return response.json();
+}
+
+function startImageUploadForNode(nodeId) {
+    state.pendingImageNodeId = nodeId;
+    imageUploadInput.click();
+}
+
+async function addChildNode(parentId) {
+    const parent = getNodeById(parentId);
+    if (!parent) return;
+    const node = await createNode({
+        parentId: parent.id,
+        text: "Nuovo ramo",
+        x: parent.x + 220,
+        y: parent.y + 90,
+        color: "#9FC5E8",
+        fontSize: 18,
+        shape: "ROUNDED",
+        imageUri: null,
+        imageWidth: DEFAULT_IMAGE_SIZE,
+        imageHeight: DEFAULT_IMAGE_SIZE
+    });
+    state.map.nodes.push(node);
+    selectNode(node.id);
+    render();
 }
 
 async function quickEdit(nodeId) {
