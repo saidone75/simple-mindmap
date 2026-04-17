@@ -1,6 +1,8 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
-const NODE_WIDTH = 180;
-const NODE_HEIGHT = 64;
+const BASE_NODE_WIDTH = 180;
+const BASE_NODE_HEIGHT = 64;
+const IMAGE_NODE_WIDTH = 220;
+const IMAGE_NODE_HEIGHT = 100;
 
 const state = {
     map: structuredClone(initialMap),
@@ -13,10 +15,23 @@ const svg = document.getElementById("mindmap-canvas");
 const textInput = document.getElementById("node-text");
 const colorInput = document.getElementById("node-color");
 const fontSizeInput = document.getElementById("node-font-size");
+const imageUrlInput = document.getElementById("node-image-url");
+const imageUploadInput = document.getElementById("node-image-upload");
+const imagePreview = document.getElementById("node-image-preview");
 const autosaveStatus = document.getElementById("autosave-status");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
+}
+
+function hasNodeImage(node) {
+    return !!(node.imageUri && node.imageUri.trim());
+}
+
+function getNodeSize(node) {
+    return hasNodeImage(node)
+        ? { width: IMAGE_NODE_WIDTH, height: IMAGE_NODE_HEIGHT }
+        : { width: BASE_NODE_WIDTH, height: BASE_NODE_HEIGHT };
 }
 
 function render() {
@@ -26,18 +41,21 @@ function render() {
         if (node.parentId != null) {
             const parent = getNodeById(node.parentId);
             if (parent) {
+                const parentSize = getNodeSize(parent);
+                const nodeSize = getNodeSize(node);
                 const line = document.createElementNS(SVG_NS, "line");
                 line.setAttribute("class", "connector");
-                line.setAttribute("x1", parent.x + NODE_WIDTH / 2);
-                line.setAttribute("y1", parent.y + NODE_HEIGHT / 2);
-                line.setAttribute("x2", node.x + NODE_WIDTH / 2);
-                line.setAttribute("y2", node.y + NODE_HEIGHT / 2);
+                line.setAttribute("x1", parent.x + parentSize.width / 2);
+                line.setAttribute("y1", parent.y + parentSize.height / 2);
+                line.setAttribute("x2", node.x + nodeSize.width / 2);
+                line.setAttribute("y2", node.y + nodeSize.height / 2);
                 svg.appendChild(line);
             }
         }
     }
 
     for (const node of state.map.nodes) {
+        const { width, height } = getNodeSize(node);
         const group = document.createElementNS(SVG_NS, "g");
         group.setAttribute("class", `node-group${node.id === state.selectedNodeId ? " selected" : ""}`);
         group.dataset.id = node.id;
@@ -47,21 +65,25 @@ function render() {
         rect.setAttribute("y", node.y);
         rect.setAttribute("rx", 18);
         rect.setAttribute("ry", 18);
-        rect.setAttribute("width", NODE_WIDTH);
-        rect.setAttribute("height", NODE_HEIGHT);
+        rect.setAttribute("width", width);
+        rect.setAttribute("height", height);
         rect.setAttribute("fill", node.color || "#FFD966");
         rect.setAttribute("stroke", "#546170");
         rect.setAttribute("stroke-width", "1.5");
         group.appendChild(rect);
 
+        if (hasNodeImage(node)) {
+            renderNodeImage(group, node, width, height);
+        }
+
         const text = document.createElementNS(SVG_NS, "text");
         text.setAttribute("class", "node-text");
-        text.setAttribute("x", node.x + NODE_WIDTH / 2);
-        text.setAttribute("y", node.y + NODE_HEIGHT / 2 + 2);
+        text.setAttribute("x", node.x + width / 2);
+        text.setAttribute("y", hasNodeImage(node) ? node.y + height - 18 : node.y + height / 2 + 2);
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("dominant-baseline", "middle");
         text.setAttribute("font-size", node.fontSize || 18);
-        text.textContent = truncate(node.text || "Nodo", 20);
+        text.textContent = truncate(node.text || "Nodo", hasNodeImage(node) ? 18 : 20);
         group.appendChild(text);
 
         group.addEventListener("mousedown", startDrag);
@@ -69,6 +91,38 @@ function render() {
         group.addEventListener("dblclick", () => quickEdit(node.id));
         svg.appendChild(group);
     }
+}
+
+function renderNodeImage(group, node, width) {
+    const imageWidth = 42;
+    const imageHeight = 42;
+    const imageX = node.x + (width - imageWidth) / 2;
+    const imageY = node.y + 12;
+    const clipId = `clip-node-${node.id}`;
+
+    const defs = document.createElementNS(SVG_NS, "defs");
+    const clipPath = document.createElementNS(SVG_NS, "clipPath");
+    clipPath.setAttribute("id", clipId);
+    const clipRect = document.createElementNS(SVG_NS, "rect");
+    clipRect.setAttribute("x", imageX);
+    clipRect.setAttribute("y", imageY);
+    clipRect.setAttribute("width", imageWidth);
+    clipRect.setAttribute("height", imageHeight);
+    clipRect.setAttribute("rx", 8);
+    clipRect.setAttribute("ry", 8);
+    clipPath.appendChild(clipRect);
+    defs.appendChild(clipPath);
+    group.appendChild(defs);
+
+    const image = document.createElementNS(SVG_NS, "image");
+    image.setAttribute("x", imageX);
+    image.setAttribute("y", imageY);
+    image.setAttribute("width", imageWidth);
+    image.setAttribute("height", imageHeight);
+    image.setAttribute("href", node.imageUri);
+    image.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    image.setAttribute("clip-path", `url(#${clipId})`);
+    group.appendChild(image);
 }
 
 function truncate(text, max) {
@@ -82,6 +136,8 @@ function selectNode(nodeId) {
     textInput.value = node.text || "";
     colorInput.value = node.color || "#FFD966";
     fontSizeInput.value = node.fontSize || 18;
+    imageUrlInput.value = node.imageUri || "";
+    updateImagePreview(node.imageUri || "");
     render();
 }
 
@@ -124,12 +180,66 @@ document.addEventListener("mouseup", () => {
 document.getElementById("save-node-btn").addEventListener("click", async () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
-    node.text = textInput.value.trim() || "Nodo";
-    node.color = colorInput.value;
-    node.fontSize = Number(fontSizeInput.value);
+    applyFormToNode(node);
     render();
     await saveNode(node);
 });
+
+document.getElementById("apply-image-url-btn").addEventListener("click", () => {
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+    node.imageUri = normalizeImageUri(imageUrlInput.value);
+    imageUrlInput.value = node.imageUri || "";
+    updateImagePreview(node.imageUri || "");
+    render();
+});
+
+document.getElementById("clear-image-btn").addEventListener("click", () => {
+    imageUrlInput.value = "";
+    updateImagePreview("");
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+    node.imageUri = null;
+    render();
+});
+
+imageUploadInput.addEventListener("change", event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : "";
+        imageUrlInput.value = dataUrl;
+        updateImagePreview(dataUrl);
+        const node = getNodeById(state.selectedNodeId);
+        if (!node) return;
+        node.imageUri = dataUrl;
+        render();
+    };
+    reader.readAsDataURL(file);
+});
+
+function updateImagePreview(uri) {
+    if (uri) {
+        imagePreview.src = uri;
+        imagePreview.style.display = "block";
+    } else {
+        imagePreview.removeAttribute("src");
+        imagePreview.style.display = "none";
+    }
+}
+
+function applyFormToNode(node) {
+    node.text = textInput.value.trim() || "Nodo";
+    node.color = colorInput.value;
+    node.fontSize = Number(fontSizeInput.value);
+    node.imageUri = normalizeImageUri(imageUrlInput.value);
+}
+
+function normalizeImageUri(value) {
+    const trimmed = (value || "").trim();
+    return trimmed.length ? trimmed : null;
+}
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
     const node = await createNode({
@@ -139,7 +249,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         y: 120 + Math.round(Math.random() * 500),
         color: "#D9D2E9",
         fontSize: 18,
-        shape: "ROUNDED"
+        shape: "ROUNDED",
+        imageUri: null
     });
     state.map.nodes.push(node);
     selectNode(node.id);
@@ -156,7 +267,8 @@ document.getElementById("add-child-btn").addEventListener("click", async () => {
         y: parent.y + 90,
         color: "#9FC5E8",
         fontSize: 18,
-        shape: "ROUNDED"
+        shape: "ROUNDED",
+        imageUri: null
     });
     state.map.nodes.push(node);
     selectNode(node.id);

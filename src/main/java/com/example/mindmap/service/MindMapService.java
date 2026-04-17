@@ -54,6 +54,7 @@ public class MindMapService {
         root.setColor("#FFD966");
         root.setFontSize(22);
         root.setShape("ROUNDED");
+        root.setImageUri(null);
         nodeRepository.save(root);
 
         return savedMap;
@@ -116,6 +117,7 @@ public class MindMapService {
         node.setColor(request.getColor() == null ? "#9FC5E8" : request.getColor());
         node.setFontSize(request.getFontSize() == null ? 18 : request.getFontSize());
         node.setShape(request.getShape() == null ? "ROUNDED" : request.getShape());
+        node.setImageUri(normalizeImageUri(request.getImageUri()));
         return toDto(nodeRepository.save(node));
     }
 
@@ -130,6 +132,7 @@ public class MindMapService {
         if (request.getColor() != null) node.setColor(request.getColor());
         if (request.getFontSize() != null) node.setFontSize(request.getFontSize());
         if (request.getShape() != null) node.setShape(request.getShape());
+        if (request.getImageUri() != null) node.setImageUri(normalizeImageUri(request.getImageUri()));
 
         return toDto(nodeRepository.save(node));
     }
@@ -164,6 +167,7 @@ public class MindMapService {
         node.setColor(color);
         node.setFontSize(parentId == null ? 22 : 18);
         node.setShape("ROUNDED");
+        node.setImageUri(null);
         return nodeRepository.save(node);
     }
 
@@ -172,6 +176,12 @@ public class MindMapService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mappa non trovata"));
     }
 
+
+    private String normalizeImageUri(String imageUri) {
+        if (imageUri == null) return null;
+        String value = imageUri.trim();
+        return value.isEmpty() ? null : value;
+    }
     private NodeDto toDto(Node node) {
         NodeDto dto = new NodeDto();
         dto.setId(node.getId());
@@ -182,6 +192,7 @@ public class MindMapService {
         dto.setColor(node.getColor());
         dto.setFontSize(node.getFontSize());
         dto.setShape(node.getShape());
+        dto.setImageUri(node.getImageUri());
         return dto;
     }
 }

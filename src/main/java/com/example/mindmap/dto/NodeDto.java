@@ -9,6 +9,7 @@ public class NodeDto {
     private String color;
     private Integer fontSize;
     private String shape;
+    private String imageUri;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -26,4 +27,6 @@ public class NodeDto {
     public void setFontSize(Integer fontSize) { this.fontSize = fontSize; }
     public String getShape() { return shape; }
     public void setShape(String shape) { this.shape = shape; }
+    public String getImageUri() { return imageUri; }
+    public void setImageUri(String imageUri) { this.imageUri = imageUri; }
 }

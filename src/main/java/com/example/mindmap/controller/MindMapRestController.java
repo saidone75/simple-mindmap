@@ -53,15 +53,27 @@ public class MindMapRestController {
             if (node.getParentId() != null) {
                 var parent = map.getNodes().stream().filter(n -> n.getId().equals(node.getParentId())).findFirst().orElse(null);
                 if (parent != null) {
-                    html.append("<line class='line' x1='").append(parent.getX() + 90).append("' y1='").append(parent.getY() + 32)
-                            .append("' x2='").append(node.getX() + 90).append("' y2='").append(node.getY() + 32).append("' />");
+                    int parentW = hasImage(parent) ? 220 : 180;
+                    int parentH = hasImage(parent) ? 100 : 64;
+                    int nodeW = hasImage(node) ? 220 : 180;
+                    int nodeH = hasImage(node) ? 100 : 64;
+                    html.append("<line class='line' x1='").append(parent.getX() + parentW / 2).append("' y1='").append(parent.getY() + parentH / 2)
+                            .append("' x2='").append(node.getX() + nodeW / 2).append("' y2='").append(node.getY() + nodeH / 2).append("' />");
                 }
             }
         }
         for (var node : map.getNodes()) {
+            int width = hasImage(node) ? 220 : 180;
+            int height = hasImage(node) ? 100 : 64;
             html.append("<g class='node'><rect x='").append(node.getX()).append("' y='").append(node.getY())
-                    .append("' rx='18' ry='18' width='180' height='64' fill='").append(escape(node.getColor()))
-                    .append("' stroke='#555' stroke-width='1.2'/><text x='").append(node.getX() + 90).append("' y='").append(node.getY() + 34)
+                    .append("' rx='18' ry='18' width='").append(width).append("' height='").append(height).append("' fill='").append(escape(node.getColor()))
+                    .append("' stroke='#555' stroke-width='1.2'/>");
+            if (hasImage(node)) {
+                html.append("<image href='").append(escape(node.getImageUri())).append("' x='").append(node.getX() + (width - 42) / 2)
+                        .append("' y='").append(node.getY() + 12).append("' width='42' height='42' preserveAspectRatio='xMidYMid slice'/>");
+            }
+            html.append("<text x='").append(node.getX() + width / 2).append("' y='")
+                    .append(hasImage(node) ? node.getY() + height - 18 : node.getY() + 34)
                     .append("' font-size='").append(node.getFontSize()).append("'>")
                     .append(escape(node.getText())).append("</text></g>");
         }
@@ -69,6 +81,10 @@ public class MindMapRestController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mappa-" + id + ".html")
                 .body(html.toString());
+    }
+
+    private boolean hasImage(NodeDto node) {
+        return node.getImageUri() != null && !node.getImageUri().isBlank();
     }
 
     private String escape(String value) {

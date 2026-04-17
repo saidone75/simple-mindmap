@@ -44,6 +44,17 @@
             <label for="node-font-size">Grandezza testo</label>
             <input id="node-font-size" type="range" min="14" max="30" value="18">
 
+            <label for="node-image-url">Immagine (link o caricamento)</label>
+            <input id="node-image-url" type="url" placeholder="https://... oppure data:image/...">
+            <div class="inline-actions">
+                <button type="button" id="apply-image-url-btn" class="secondary-btn small-btn">Usa link</button>
+                <button type="button" id="clear-image-btn" class="secondary-btn small-btn">Rimuovi immagine</button>
+            </div>
+            <input id="node-image-upload" type="file" accept="image/*">
+            <div class="image-preview-box">
+                <img id="node-image-preview" alt="Anteprima immagine nodo" />
+            </div>
+
             <div class="panel-actions">
                 <button type="button" id="save-node-btn">Salva modifiche</button>
                 <button type="button" id="add-child-btn">Aggiungi ramo</button>

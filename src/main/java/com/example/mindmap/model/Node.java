@@ -33,6 +33,10 @@ public class Node {
     @Column(nullable = false)
     private String shape;
 
+    @Lob
+    @Column(columnDefinition = "CLOB")
+    private String imageUri;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getMapId() { return mapId; }
@@ -51,4 +55,6 @@ public class Node {
     public void setFontSize(Integer fontSize) { this.fontSize = fontSize; }
     public String getShape() { return shape; }
     public void setShape(String shape) { this.shape = shape; }
+    public String getImageUri() { return imageUri; }
+    public void setImageUri(String imageUri) { this.imageUri = imageUri; }
 }
