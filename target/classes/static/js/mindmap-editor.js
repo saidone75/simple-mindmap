@@ -15,7 +15,7 @@ const MAP_CENTER_Y = 450;
 const BASE_CANVAS_WIDTH = 1400;
 const BASE_CANVAS_HEIGHT = 900;
 const CANVAS_PADDING = 180;
-const MIN_ZOOM_PERCENT = 50;
+const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
 
 const state = {
@@ -358,6 +358,9 @@ function getCanvasBounds() {
 function applyCanvasViewport() {
     const zoomPercent = Number(zoomInput?.value) || 100;
     const clampedZoomPercent = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, zoomPercent));
+    if (zoomInput && Number(zoomInput.value) !== clampedZoomPercent) {
+        zoomInput.value = String(clampedZoomPercent);
+    }
     const zoomFactor = clampedZoomPercent / 100;
     const { width, height } = getCanvasBounds();
 
