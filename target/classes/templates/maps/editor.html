@@ -28,6 +28,18 @@
 
         <aside class="side-panel">
             <h2>Nodo selezionato</h2>
+            <label for="map-theme">Stile mappa (tutta la mappa)</label>
+            <select id="map-theme">
+                <option value="CLASSIC">Classico</option>
+                <option value="PLAYFUL">Giocoso scuola primaria</option>
+                <option value="OCEAN">Oceano colorato</option>
+                <option value="CANDY">Candy / Fancy</option>
+            </select>
+            <div class="inline-actions">
+                <button type="button" id="apply-theme-btn" class="secondary-btn small-btn">Applica stile mappa</button>
+                <button type="button" id="apply-branch-style-all-btn" class="secondary-btn small-btn">Stile rami per tutta la mappa</button>
+            </div>
+
             <label for="node-text">Testo</label>
             <input id="node-text" type="text" maxlength="100">
 
@@ -50,6 +62,10 @@
                 <option value="DASHED">Tratteggiato</option>
                 <option value="DOTTED">Puntinato</option>
                 <option value="BOLD">Spesso</option>
+                <option value="DOUBLE">Doppio tratto</option>
+                <option value="ZIGZAG">Zig-zag</option>
+                <option value="ARROW">Con freccia</option>
+                <option value="BOLD_ARROW">Freccia spessa</option>
             </select>
 
             <label for="node-font-size">Grandezza testo</label>
@@ -76,7 +92,7 @@
                 <button type="button" id="delete-node-btn" class="danger-btn">Elimina nodo</button>
             </div>
 
-            <div class="autosave-box" id="autosave-status">Modifiche salvate.</div>
+            <div class="autosave-box" id="autosave-status">Modifiche salvate. I cambi ai rami vengono inviati automaticamente.</div>
         </aside>
     </main>
 </div>

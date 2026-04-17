@@ -6,6 +6,34 @@ const IMAGE_NODE_HEIGHT = 130;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
+const DEFAULT_MAP_STYLE = "CLASSIC";
+
+const THEME_PRESETS = {
+    CLASSIC: {
+        pageClass: "theme-classic",
+        canvasBackground: "linear-gradient(#fff, #fbfdff)",
+        nodePalette: ["#FFD966", "#9FC5E8", "#B6D7A8", "#F4CCCC", "#F9CB9C", "#D9D2E9"],
+        connectorPalette: ["#7c8a9a"]
+    },
+    PLAYFUL: {
+        pageClass: "theme-playful",
+        canvasBackground: "linear-gradient(180deg, #fff7ea 0%, #edf8ff 100%)",
+        nodePalette: ["#FFD966", "#FFB5E8", "#A0E7E5", "#B4F8C8", "#FFC09F", "#C7CEEA"],
+        connectorPalette: ["#ff7aa2", "#6bcb77", "#4d96ff", "#ffb347", "#9d6bff"]
+    },
+    OCEAN: {
+        pageClass: "theme-ocean",
+        canvasBackground: "linear-gradient(180deg, #e0f2fe 0%, #ecfeff 100%)",
+        nodePalette: ["#8ecae6", "#219ebc", "#90e0ef", "#ade8f4", "#caf0f8", "#7bdff2"],
+        connectorPalette: ["#0f4c81", "#0077b6", "#0096c7", "#00b4d8"]
+    },
+    CANDY: {
+        pageClass: "theme-candy",
+        canvasBackground: "linear-gradient(180deg, #fff0f6 0%, #f5f3ff 100%)",
+        nodePalette: ["#ff8fab", "#ffc6ff", "#bde0fe", "#caffbf", "#ffd6a5", "#f1c0e8"],
+        connectorPalette: ["#ff5d8f", "#7b2cbf", "#3a86ff", "#ff9f1c", "#2ec4b6"]
+    }
+};
 
 const state = {
     map: structuredClone(initialMap),
@@ -14,6 +42,7 @@ const state = {
     resize: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
+    mapStyleTimer: null,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -30,6 +59,8 @@ const imageHeightInput = document.getElementById("node-image-height");
 const imageWidthValue = document.getElementById("node-image-width-value");
 const imageHeightValue = document.getElementById("node-image-height-value");
 const autosaveStatus = document.getElementById("autosave-status");
+const mapThemeInput = document.getElementById("map-theme");
+const editorPage = document.querySelector(".editor-page");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
@@ -56,9 +87,99 @@ function getNodeImageSize(node) {
     };
 }
 
+function getActiveTheme() {
+    return THEME_PRESETS[state.map.stylePreset] || THEME_PRESETS[DEFAULT_MAP_STYLE];
+}
+
+function applyMapThemeVisuals() {
+    const theme = getActiveTheme();
+    editorPage.classList.remove("theme-classic", "theme-playful", "theme-ocean", "theme-candy");
+    editorPage.classList.add(theme.pageClass);
+    svg.style.background = theme.canvasBackground;
+}
+
+function renderConnectorDefs() {
+    const defs = document.createElementNS(SVG_NS, "defs");
+
+    const arrow = document.createElementNS(SVG_NS, "marker");
+    arrow.setAttribute("id", "arrow-head");
+    arrow.setAttribute("viewBox", "0 0 10 10");
+    arrow.setAttribute("refX", "10");
+    arrow.setAttribute("refY", "5");
+    arrow.setAttribute("markerWidth", "6");
+    arrow.setAttribute("markerHeight", "6");
+    arrow.setAttribute("orient", "auto-start-reverse");
+    const arrowPath = document.createElementNS(SVG_NS, "path");
+    arrowPath.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
+    arrowPath.setAttribute("fill", "#4b5563");
+    arrow.appendChild(arrowPath);
+    defs.appendChild(arrow);
+
+    const arrowBold = document.createElementNS(SVG_NS, "marker");
+    arrowBold.setAttribute("id", "arrow-head-bold");
+    arrowBold.setAttribute("viewBox", "0 0 14 14");
+    arrowBold.setAttribute("refX", "14");
+    arrowBold.setAttribute("refY", "7");
+    arrowBold.setAttribute("markerWidth", "8");
+    arrowBold.setAttribute("markerHeight", "8");
+    arrowBold.setAttribute("orient", "auto-start-reverse");
+    const arrowBoldPath = document.createElementNS(SVG_NS, "path");
+    arrowBoldPath.setAttribute("d", "M 0 0 L 14 7 L 0 14 z");
+    arrowBoldPath.setAttribute("fill", "#374151");
+    arrowBold.appendChild(arrowBoldPath);
+    defs.appendChild(arrowBold);
+
+    svg.appendChild(defs);
+}
+
+function applyBranchStyle(path, node, connectorIndex) {
+    const theme = getActiveTheme();
+    const style = (node.branchStyle || "SOLID").toUpperCase();
+    const fallbackColor = theme.connectorPalette[connectorIndex % theme.connectorPalette.length];
+    const strokeColor = node.branchColor || fallbackColor || "#7c8a9a";
+
+    path.setAttribute("stroke", strokeColor);
+    path.setAttribute("stroke-width", "3");
+    path.removeAttribute("stroke-dasharray");
+    path.removeAttribute("marker-end");
+    path.removeAttribute("stroke-linecap");
+
+    switch (style) {
+        case "DASHED":
+            path.setAttribute("stroke-dasharray", "10 7");
+            break;
+        case "DOTTED":
+            path.setAttribute("stroke-dasharray", "2 8");
+            path.setAttribute("stroke-linecap", "round");
+            break;
+        case "BOLD":
+            path.setAttribute("stroke-width", "5");
+            break;
+        case "DOUBLE":
+            path.setAttribute("stroke-width", "6");
+            path.setAttribute("stroke-dasharray", "1 2");
+            break;
+        case "ZIGZAG":
+            path.setAttribute("stroke-dasharray", "14 5 3 5");
+            break;
+        case "ARROW":
+            path.setAttribute("marker-end", "url(#arrow-head)");
+            break;
+        case "BOLD_ARROW":
+            path.setAttribute("stroke-width", "5");
+            path.setAttribute("marker-end", "url(#arrow-head-bold)");
+            break;
+        default:
+            break;
+    }
+}
+
 function render() {
     svg.innerHTML = "";
+    renderConnectorDefs();
+    applyMapThemeVisuals();
 
+    let connectorIndex = 0;
     for (const node of state.map.nodes) {
         if (node.parentId != null) {
             const parent = getNodeById(node.parentId);
@@ -75,14 +196,7 @@ function render() {
 
                 path.setAttribute("class", "connector");
                 path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-                path.setAttribute("stroke", node.branchColor || "#7c8a9a");
-                path.setAttribute("stroke-width", node.branchStyle === "BOLD" ? "4" : "3");
-                if (node.branchStyle === "DASHED") {
-                    path.setAttribute("stroke-dasharray", "10 7");
-                } else if (node.branchStyle === "DOTTED") {
-                    path.setAttribute("stroke-dasharray", "2 8");
-                    path.setAttribute("stroke-linecap", "round");
-                }
+                applyBranchStyle(path, node, connectorIndex++);
                 svg.appendChild(path);
             }
         }
@@ -267,6 +381,7 @@ function selectNode(nodeId) {
     imageHeightInput.value = imageSize.height;
     updateImageSizeLabels();
     updateImagePreview(node.imageUri || "");
+    mapThemeInput.value = state.map.stylePreset || DEFAULT_MAP_STYLE;
     render();
 }
 
@@ -350,6 +465,26 @@ document.getElementById("save-node-btn").addEventListener("click", async () => {
     await saveNode(node);
 });
 
+document.getElementById("apply-theme-btn").addEventListener("click", async () => {
+    await saveMapStyle(mapThemeInput.value);
+});
+
+document.getElementById("apply-branch-style-all-btn").addEventListener("click", async () => {
+    const selected = getNodeById(state.selectedNodeId);
+    if (!selected) return;
+    applyFormToNode(selected);
+    const updates = state.map.nodes
+        .filter(node => node.parentId != null)
+        .map(node => {
+            node.branchStyle = selected.branchStyle;
+            node.branchColor = selected.branchColor;
+            return saveNode(node);
+        });
+    render();
+    await Promise.all(updates);
+    autosaveStatus.textContent = "Stile rami applicato a tutta la mappa.";
+});
+
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -413,6 +548,19 @@ imageHeightInput.addEventListener("input", () => {
     imageHeightInput.value = node.imageHeight;
     updateImageSizeLabels();
     render();
+});
+
+const autosubmitFields = [textInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
+for (const field of autosubmitFields) {
+    const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
+    field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
+}
+imageWidthInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
+imageHeightInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
+mapThemeInput.addEventListener("change", () => {
+    state.map.stylePreset = mapThemeInput.value;
+    render();
+    scheduleMapStyleAutosave();
 });
 
 function updateImagePreview(uri) {
@@ -508,10 +656,43 @@ async function saveNode(node) {
     autosaveStatus.textContent = "Modifiche salvate.";
 }
 
+function queueAutoSubmitSelectedNode() {
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+    applyFormToNode(node);
+    render();
+    scheduleAutosave(node);
+}
+
 function scheduleAutosave(node) {
     autosaveStatus.textContent = "Modifiche non ancora salvate...";
     clearTimeout(state.autosaveTimer);
     state.autosaveTimer = setTimeout(() => saveNode(node), 500);
+}
+
+function scheduleMapStyleAutosave() {
+    autosaveStatus.textContent = "Stile mappa in salvataggio automatico...";
+    clearTimeout(state.mapStyleTimer);
+    state.mapStyleTimer = setTimeout(() => saveMapStyle(state.map.stylePreset), 400);
+}
+
+async function saveMapStyle(stylePreset) {
+    const normalized = stylePreset || DEFAULT_MAP_STYLE;
+    state.map.stylePreset = normalized;
+    mapThemeInput.value = normalized;
+    applyMapThemeVisuals();
+    autosaveStatus.textContent = "Salvataggio stile mappa...";
+    const response = await fetch(`/api/maps/${state.map.id}/style`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stylePreset: normalized })
+    });
+    if (response.ok) {
+        const updatedMap = await response.json();
+        state.map.stylePreset = updatedMap.stylePreset || normalized;
+    }
+    autosaveStatus.textContent = "Stile mappa salvato.";
+    render();
 }
 
 async function fetchMap() {
@@ -601,5 +782,7 @@ function slugify(value) {
         .replace(/(^-|-$)/g, "") || "mappa";
 }
 
+state.map.stylePreset = state.map.stylePreset || DEFAULT_MAP_STYLE;
+mapThemeInput.value = state.map.stylePreset;
 selectNode(state.map.nodes[0]?.id ?? null);
 render();

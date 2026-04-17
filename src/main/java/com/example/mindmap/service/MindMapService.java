@@ -17,6 +17,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class MindMapService {
     private static final int MIN_IMAGE_SIZE = 24;
     private static final int MAX_IMAGE_SIZE = 120;
+    private static final String DEFAULT_STYLE_PRESET = "CLASSIC";
 
     private final MindMapRepository mindMapRepository;
     private final NodeRepository nodeRepository;
@@ -37,6 +38,7 @@ public class MindMapService {
         MindMapDto dto = new MindMapDto();
         dto.setId(map.getId());
         dto.setTitle(map.getTitle());
+        dto.setStylePreset(normalizeStylePreset(map.getStylePreset()));
         dto.setNodes(nodeRepository.findByMapIdOrderByIdAsc(id).stream().map(this::toDto).toList());
         return dto;
     }
@@ -45,6 +47,7 @@ public class MindMapService {
     public MindMap create(CreateMindMapRequest request) {
         MindMap map = new MindMap();
         map.setTitle(request.getTitle().trim());
+        map.setStylePreset(DEFAULT_STYLE_PRESET);
         MindMap savedMap = mindMapRepository.save(map);
 
         Node root = new Node();
@@ -77,6 +80,7 @@ public class MindMapService {
         };
         MindMap map = new MindMap();
         map.setTitle(title);
+        map.setStylePreset(DEFAULT_STYLE_PRESET);
         MindMap saved = mindMapRepository.save(map);
 
         Node root = createNode(saved.getId(), null, title, 620, 260, "#FFD966");
@@ -164,6 +168,14 @@ public class MindMapService {
         mindMapRepository.deleteById(id);
     }
 
+    @Transactional
+    public MindMapDto updateMapStyle(Long mapId, String stylePreset) {
+        MindMap map = getMap(mapId);
+        map.setStylePreset(normalizeStylePreset(stylePreset));
+        mindMapRepository.save(map);
+        return findMapWithNodes(mapId);
+    }
+
     private void deleteRecursive(Long nodeId, List<Node> allNodes) {
         for (Node child : allNodes.stream().filter(n -> nodeId.equals(n.getParentId())).toList()) {
             deleteRecursive(child.getId(), allNodes);
@@ -204,6 +216,14 @@ public class MindMapService {
     private Integer normalizeImageSize(Integer imageSize) {
         if (imageSize == null) return null;
         return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, imageSize));
+    }
+
+    private String normalizeStylePreset(String stylePreset) {
+        if (stylePreset == null || stylePreset.isBlank()) return DEFAULT_STYLE_PRESET;
+        return switch (stylePreset.trim().toUpperCase()) {
+            case "PLAYFUL", "OCEAN", "CANDY", "CLASSIC" -> stylePreset.trim().toUpperCase();
+            default -> DEFAULT_STYLE_PRESET;
+        };
     }
 
     private NodeDto toDto(Node node) {

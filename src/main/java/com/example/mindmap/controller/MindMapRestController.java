@@ -3,6 +3,7 @@ package com.example.mindmap.controller;
 import com.example.mindmap.dto.CreateNodeRequest;
 import com.example.mindmap.dto.MindMapDto;
 import com.example.mindmap.dto.NodeDto;
+import com.example.mindmap.dto.UpdateMapStyleRequest;
 import com.example.mindmap.dto.UpdateNodeRequest;
 import com.example.mindmap.service.MindMapService;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +34,11 @@ public class MindMapRestController {
     @PutMapping("/nodes/{nodeId}")
     public NodeDto updateNode(@PathVariable Long nodeId, @RequestBody UpdateNodeRequest request) {
         return mindMapService.updateNode(nodeId, request);
+    }
+
+    @PutMapping("/maps/{id}/style")
+    public MindMapDto updateMapStyle(@PathVariable Long id, @RequestBody UpdateMapStyleRequest request) {
+        return mindMapService.updateMapStyle(id, request.getStylePreset());
     }
 
     @DeleteMapping("/nodes/{nodeId}")

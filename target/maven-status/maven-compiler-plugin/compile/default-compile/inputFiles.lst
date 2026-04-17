@@ -4,6 +4,7 @@ C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\d
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\dto\CreateNodeRequest.java
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\dto\MindMapDto.java
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\dto\NodeDto.java
+C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\dto\UpdateMapStyleRequest.java
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\dto\UpdateNodeRequest.java
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\MindmapApplication.java
 C:\Users\mmarini\IdeaProjects\simple-mindmap\src\main\java\com\example\mindmap\model\MindMap.java
