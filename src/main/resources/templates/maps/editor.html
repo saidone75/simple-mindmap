@@ -22,7 +22,7 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo. Ogni nodo ha i tastini 🖼 e + per aggiungere immagine e nodi figli. Se un nodo ha un'immagine, usa il pallino in basso a destra per ridimensionarla.</div>
+            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo. Ogni nodo ha i tastini 🖼, + e 🗑 per immagine, figlio ed eliminazione. Se un nodo ha un'immagine, usa il pallino in basso a destra per ridimensionarla.</div>
             <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
         </section>
 
@@ -39,6 +39,17 @@
                 <option value="#F4CCCC">Rosa</option>
                 <option value="#F9CB9C">Arancione</option>
                 <option value="#D9D2E9">Lilla</option>
+            </select>
+
+            <label for="branch-color">Colore ramo</label>
+            <input id="branch-color" type="color" value="#7c8a9a">
+
+            <label for="branch-style">Stile ramo</label>
+            <select id="branch-style">
+                <option value="SOLID">Continuo</option>
+                <option value="DASHED">Tratteggiato</option>
+                <option value="DOTTED">Puntinato</option>
+                <option value="BOLD">Spesso</option>
             </select>
 
             <label for="node-font-size">Grandezza testo</label>

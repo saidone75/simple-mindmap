@@ -9,6 +9,8 @@ public class NodeDto {
     private String color;
     private Integer fontSize;
     private String shape;
+    private String branchColor;
+    private String branchStyle;
     private String imageUri;
     private Integer imageWidth;
     private Integer imageHeight;
@@ -29,6 +31,10 @@ public class NodeDto {
     public void setFontSize(Integer fontSize) { this.fontSize = fontSize; }
     public String getShape() { return shape; }
     public void setShape(String shape) { this.shape = shape; }
+    public String getBranchColor() { return branchColor; }
+    public void setBranchColor(String branchColor) { this.branchColor = branchColor; }
+    public String getBranchStyle() { return branchStyle; }
+    public void setBranchStyle(String branchStyle) { this.branchStyle = branchStyle; }
     public String getImageUri() { return imageUri; }
     public void setImageUri(String imageUri) { this.imageUri = imageUri; }
     public Integer getImageWidth() { return imageWidth; }

@@ -1,8 +1,8 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
-const BASE_NODE_WIDTH = 180;
-const BASE_NODE_HEIGHT = 64;
-const IMAGE_NODE_WIDTH = 220;
-const IMAGE_NODE_HEIGHT = 100;
+const BASE_NODE_WIDTH = 220;
+const BASE_NODE_HEIGHT = 78;
+const IMAGE_NODE_WIDTH = 260;
+const IMAGE_NODE_HEIGHT = 130;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
@@ -19,6 +19,8 @@ const state = {
 const svg = document.getElementById("mindmap-canvas");
 const textInput = document.getElementById("node-text");
 const colorInput = document.getElementById("node-color");
+const branchColorInput = document.getElementById("branch-color");
+const branchStyleInput = document.getElementById("branch-style");
 const fontSizeInput = document.getElementById("node-font-size");
 const imageUrlInput = document.getElementById("node-image-url");
 const imageUploadInput = document.getElementById("node-image-upload");
@@ -63,13 +65,25 @@ function render() {
             if (parent) {
                 const parentSize = getNodeSize(parent);
                 const nodeSize = getNodeSize(node);
-                const line = document.createElementNS(SVG_NS, "line");
-                line.setAttribute("class", "connector");
-                line.setAttribute("x1", parent.x + parentSize.width / 2);
-                line.setAttribute("y1", parent.y + parentSize.height / 2);
-                line.setAttribute("x2", node.x + nodeSize.width / 2);
-                line.setAttribute("y2", node.y + nodeSize.height / 2);
-                svg.appendChild(line);
+                const path = document.createElementNS(SVG_NS, "path");
+                const x1 = parent.x + parentSize.width / 2;
+                const y1 = parent.y + parentSize.height / 2;
+                const x2 = node.x + nodeSize.width / 2;
+                const y2 = node.y + nodeSize.height / 2;
+                const cx = (x1 + x2) / 2;
+                const cy = (y1 + y2) / 2 - 28;
+
+                path.setAttribute("class", "connector");
+                path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+                path.setAttribute("stroke", node.branchColor || "#7c8a9a");
+                path.setAttribute("stroke-width", node.branchStyle === "BOLD" ? "4" : "3");
+                if (node.branchStyle === "DASHED") {
+                    path.setAttribute("stroke-dasharray", "10 7");
+                } else if (node.branchStyle === "DOTTED") {
+                    path.setAttribute("stroke-dasharray", "2 8");
+                    path.setAttribute("stroke-linecap", "round");
+                }
+                svg.appendChild(path);
             }
         }
     }
@@ -162,6 +176,13 @@ function renderImageResizeHandle(group, node, nodeWidth) {
 function renderNodeActionButtons(group, node, nodeWidth) {
     const actions = [
         {
+            key: "delete-node",
+            label: "🗑",
+            title: "Elimina nodo",
+            onClick: () => deleteNodeWithChecks(node.id),
+            x: node.x + nodeWidth - 72
+        },
+        {
             key: "add-image",
             label: "🖼",
             title: "Aggiungi immagine",
@@ -182,7 +203,7 @@ function renderNodeActionButtons(group, node, nodeWidth) {
         button.setAttribute("class", "node-action-button");
         button.dataset.nodeId = node.id;
         button.dataset.action = action.key;
-        button.setAttribute("transform", `translate(${action.x}, ${node.y + 14})`);
+        button.setAttribute("transform", `translate(${action.x}, ${node.y + 16})`);
         button.addEventListener("mousedown", event => {
             event.stopPropagation();
             event.preventDefault();
@@ -237,6 +258,8 @@ function selectNode(nodeId) {
     if (!node) return;
     textInput.value = node.text || "";
     colorInput.value = node.color || "#FFD966";
+    branchColorInput.value = node.branchColor || "#7c8a9a";
+    branchStyleInput.value = node.branchStyle || "SOLID";
     fontSizeInput.value = node.fontSize || 18;
     imageUrlInput.value = node.imageUri || "";
     const imageSize = getNodeImageSize(node);
@@ -405,6 +428,8 @@ function updateImagePreview(uri) {
 function applyFormToNode(node) {
     node.text = textInput.value.trim() || "Nodo";
     node.color = colorInput.value;
+    node.branchColor = branchColorInput.value;
+    node.branchStyle = branchStyleInput.value;
     node.fontSize = Number(fontSizeInput.value);
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     node.imageWidth = clampImageSize(Number(imageWidthInput.value));
@@ -440,6 +465,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         color: "#D9D2E9",
         fontSize: 18,
         shape: "ROUNDED",
+        branchColor: "#7c8a9a",
+        branchStyle: "SOLID",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE
@@ -456,19 +483,8 @@ document.getElementById("add-child-btn").addEventListener("click", async () => {
 });
 
 document.getElementById("delete-node-btn").addEventListener("click", async () => {
-    const node = getNodeById(state.selectedNodeId);
-    if (!node) return;
-    const rootCount = state.map.nodes.filter(n => n.parentId == null).length;
-    if (node.parentId == null && rootCount === 1) {
-        alert("La mappa deve avere almeno un nodo principale.");
-        return;
-    }
-    if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
-    await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
-    state.map = await fetchMap();
-    state.selectedNodeId = state.map.nodes[0]?.id ?? null;
-    if (state.selectedNodeId) selectNode(state.selectedNodeId);
-    render();
+    if (state.selectedNodeId == null) return;
+    await deleteNodeWithChecks(state.selectedNodeId);
 });
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
@@ -519,12 +535,30 @@ async function addChildNode(parentId) {
         color: "#9FC5E8",
         fontSize: 18,
         shape: "ROUNDED",
+        branchColor: "#7c8a9a",
+        branchStyle: "SOLID",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE
     });
     state.map.nodes.push(node);
     selectNode(node.id);
+    render();
+}
+
+async function deleteNodeWithChecks(nodeId) {
+    const node = getNodeById(nodeId);
+    if (!node) return;
+    const rootCount = state.map.nodes.filter(n => n.parentId == null).length;
+    if (node.parentId == null && rootCount === 1) {
+        alert("La mappa deve avere almeno un nodo principale.");
+        return;
+    }
+    if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
+    await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
+    state.map = await fetchMap();
+    state.selectedNodeId = state.map.nodes[0]?.id ?? null;
+    if (state.selectedNodeId) selectNode(state.selectedNodeId);
     render();
 }
 

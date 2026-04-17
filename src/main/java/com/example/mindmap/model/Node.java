@@ -33,6 +33,12 @@ public class Node {
     @Column(nullable = false)
     private String shape;
 
+    @Column(nullable = false)
+    private String branchColor;
+
+    @Column(nullable = false)
+    private String branchStyle;
+
     @Lob
     @Column(columnDefinition = "CLOB")
     private String imageUri;
@@ -59,6 +65,10 @@ public class Node {
     public void setFontSize(Integer fontSize) { this.fontSize = fontSize; }
     public String getShape() { return shape; }
     public void setShape(String shape) { this.shape = shape; }
+    public String getBranchColor() { return branchColor; }
+    public void setBranchColor(String branchColor) { this.branchColor = branchColor; }
+    public String getBranchStyle() { return branchStyle; }
+    public void setBranchStyle(String branchStyle) { this.branchStyle = branchStyle; }
     public String getImageUri() { return imageUri; }
     public void setImageUri(String imageUri) { this.imageUri = imageUri; }
     public Integer getImageWidth() { return imageWidth; }

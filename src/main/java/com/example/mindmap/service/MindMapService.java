@@ -56,6 +56,8 @@ public class MindMapService {
         root.setColor("#FFD966");
         root.setFontSize(22);
         root.setShape("ROUNDED");
+        root.setBranchColor("#7c8a9a");
+        root.setBranchStyle("SOLID");
         root.setImageUri(null);
         root.setImageWidth(null);
         root.setImageHeight(null);
@@ -121,6 +123,8 @@ public class MindMapService {
         node.setColor(request.getColor() == null ? "#9FC5E8" : request.getColor());
         node.setFontSize(request.getFontSize() == null ? 18 : request.getFontSize());
         node.setShape(request.getShape() == null ? "ROUNDED" : request.getShape());
+        node.setBranchColor(request.getBranchColor() == null ? "#7c8a9a" : request.getBranchColor());
+        node.setBranchStyle(request.getBranchStyle() == null ? "SOLID" : request.getBranchStyle());
         node.setImageUri(normalizeImageUri(request.getImageUri()));
         node.setImageWidth(normalizeImageSize(request.getImageWidth()));
         node.setImageHeight(normalizeImageSize(request.getImageHeight()));
@@ -138,6 +142,8 @@ public class MindMapService {
         if (request.getColor() != null) node.setColor(request.getColor());
         if (request.getFontSize() != null) node.setFontSize(request.getFontSize());
         if (request.getShape() != null) node.setShape(request.getShape());
+        if (request.getBranchColor() != null) node.setBranchColor(request.getBranchColor());
+        if (request.getBranchStyle() != null) node.setBranchStyle(request.getBranchStyle());
         if (request.getImageUri() != null) node.setImageUri(normalizeImageUri(request.getImageUri()));
         if (request.getImageWidth() != null) node.setImageWidth(normalizeImageSize(request.getImageWidth()));
         if (request.getImageHeight() != null) node.setImageHeight(normalizeImageSize(request.getImageHeight()));
@@ -175,6 +181,8 @@ public class MindMapService {
         node.setColor(color);
         node.setFontSize(parentId == null ? 22 : 18);
         node.setShape("ROUNDED");
+        node.setBranchColor("#7c8a9a");
+        node.setBranchStyle("SOLID");
         node.setImageUri(null);
         node.setImageWidth(null);
         node.setImageHeight(null);
@@ -208,6 +216,8 @@ public class MindMapService {
         dto.setColor(node.getColor());
         dto.setFontSize(node.getFontSize());
         dto.setShape(node.getShape());
+        dto.setBranchColor(node.getBranchColor());
+        dto.setBranchStyle(node.getBranchStyle());
         dto.setImageUri(node.getImageUri());
         dto.setImageWidth(node.getImageWidth());
         dto.setImageHeight(node.getImageHeight());

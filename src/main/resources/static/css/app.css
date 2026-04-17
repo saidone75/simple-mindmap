@@ -169,14 +169,21 @@ input[type="file"] {
     user-select: none;
     pointer-events: none;
     font-weight: 700;
-    fill: #233044;
+    fill: #1f2937;
 }
 .connector {
+    fill: none;
     stroke: #7c8a9a;
-    stroke-width: 2.5;
+    stroke-width: 3;
+    opacity: 0.9;
 }
 .node-group { cursor: grab; }
-.node-group.selected rect { stroke: #1d4ed8; stroke-width: 3; }
+.node-group rect {
+    stroke: #475569;
+    stroke-width: 2;
+    filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.12));
+}
+.node-group.selected rect { stroke: #1d4ed8; stroke-width: 3.5; }
 .image-resize-handle {
     fill: #ffffff;
     stroke: #1d4ed8;
@@ -187,15 +194,15 @@ input[type="file"] {
     cursor: pointer;
 }
 .node-action-button circle {
-    fill: #ffffff;
+    fill: #f8fafc;
     stroke: #3b82f6;
-    stroke-width: 1.8;
+    stroke-width: 2;
 }
 .node-action-button:hover circle {
     fill: #dbeafe;
 }
 .node-action-icon {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     fill: #1d4ed8;
     user-select: none;
