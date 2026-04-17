@@ -14,6 +14,8 @@ public class UpdateNodeRequest {
     private String imageUri;
     private Integer imageWidth;
     private Integer imageHeight;
+    private Integer nodeWidth;
+    private Integer nodeHeight;
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
@@ -41,4 +43,8 @@ public class UpdateNodeRequest {
     public void setImageWidth(Integer imageWidth) { this.imageWidth = imageWidth; }
     public Integer getImageHeight() { return imageHeight; }
     public void setImageHeight(Integer imageHeight) { this.imageHeight = imageHeight; }
+    public Integer getNodeWidth() { return nodeWidth; }
+    public void setNodeWidth(Integer nodeWidth) { this.nodeWidth = nodeWidth; }
+    public Integer getNodeHeight() { return nodeHeight; }
+    public void setNodeHeight(Integer nodeHeight) { this.nodeHeight = nodeHeight; }
 }

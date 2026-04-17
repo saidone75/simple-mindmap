@@ -22,17 +22,12 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse. Clicca direttamente sul testo del nodo o del ramo per modificarlo. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, testo ramo, elimina.</div>
+            <div class="canvas-hint">Trascina i nodi con il mouse. Clicca direttamente sul testo del nodo o del ramo per modificarlo. Ridimensiona un nodo dal pallino in basso a destra quando è selezionato. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, testo ramo, elimina.</div>
             <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
         </section>
 
         <aside class="side-panel">
             <h2>Nodo selezionato</h2>
-            <label for="map-style">Stile rendering mappa</label>
-            <select id="map-style">
-                <option value="CLASSIC">Classico (blocchi)</option>
-                <option value="PLAYFUL">Sketch radiale (a rami)</option>
-            </select>
             <button type="button" id="auto-layout-btn" class="secondary-btn full-row-btn">Auto-layout dalla struttura</button>
 
             <label for="node-text">Testo</label>

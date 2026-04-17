@@ -6,6 +6,10 @@ const IMAGE_NODE_HEIGHT = 130;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
+const MIN_NODE_WIDTH = 120;
+const MAX_NODE_WIDTH = 720;
+const MIN_NODE_HEIGHT = 60;
+const MAX_NODE_HEIGHT = 420;
 const MAP_CENTER_X = 700;
 const MAP_CENTER_Y = 450;
 
@@ -34,7 +38,6 @@ const imageHeightValue = document.getElementById("node-image-height-value");
 const autosaveStatus = document.getElementById("autosave-status");
 const nodeEmojiInput = document.getElementById("node-emoji");
 const branchTextInput = document.getElementById("branch-text");
-const mapStyleInput = document.getElementById("map-style");
 const autoLayoutBtn = document.getElementById("auto-layout-btn");
 
 function getNodeById(id) {
@@ -55,12 +58,18 @@ function getNodeSize(node) {
     const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
     const lineCount = getNodeDisplayLines(node, hasNodeImage(node) ? 18 : 20).length;
     const textBlockHeight = lineCount * lineHeight;
-    return hasNodeImage(node)
+    const baseSize = hasNodeImage(node)
         ? {
             width: Math.max(IMAGE_NODE_WIDTH, imageSize.width + 60),
             height: Math.max(IMAGE_NODE_HEIGHT, imageSize.height + textBlockHeight + 44)
         }
         : { width: BASE_NODE_WIDTH, height: Math.max(BASE_NODE_HEIGHT, textBlockHeight + 34) };
+    const customWidth = clampNodeWidth(Number(node.nodeWidth));
+    const customHeight = clampNodeHeight(Number(node.nodeHeight));
+    return {
+        width: Math.max(baseSize.width, customWidth),
+        height: Math.max(baseSize.height, customHeight)
+    };
 }
 
 function getNodeImageSize(node) {
@@ -71,7 +80,7 @@ function getNodeImageSize(node) {
 }
 
 function isSketchPreset() {
-    return (state.map.stylePreset || "CLASSIC").toUpperCase() === "PLAYFUL";
+    return false;
 }
 
 function getSketchNodeSize(node) {
@@ -252,6 +261,9 @@ function render() {
 
         if (!sketchPreset) {
             renderNodeActionButtons(group, node, width);
+            if (node.id === state.selectedNodeId) {
+                renderNodeResizeHandle(group, node, width, height);
+            }
         }
 
         const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
@@ -443,6 +455,17 @@ function renderNodeActionButtons(group, node, nodeWidth) {
     });
 }
 
+function renderNodeResizeHandle(group, node, nodeWidth, nodeHeight) {
+    const handle = document.createElementNS(SVG_NS, "circle");
+    handle.setAttribute("class", "node-resize-handle");
+    handle.setAttribute("cx", node.x + nodeWidth - 3);
+    handle.setAttribute("cy", node.y + nodeHeight - 3);
+    handle.setAttribute("r", "8");
+    handle.dataset.nodeId = node.id;
+    handle.addEventListener("mousedown", startNodeResize);
+    group.appendChild(handle);
+}
+
 function renderBranchLabel(node, cx, cy, x1, y1, x2, y2) {
     const branchText = (node.branchText || "").trim();
     if (!branchText) return;
@@ -546,11 +569,32 @@ function startImageResize(event) {
     const bounds = getNodeImageBounds(node, nodeSize.width);
     const point = toSvgPoint(event);
     state.resize = {
+        mode: "image",
         nodeId,
         anchorX: bounds.x,
         anchorY: bounds.y,
         pointerOffsetX: bounds.x + bounds.width - point.x,
         pointerOffsetY: bounds.y + bounds.height - point.y,
+    };
+}
+
+function startNodeResize(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const nodeId = Number(event.currentTarget.dataset.nodeId);
+    const node = getNodeById(nodeId);
+    if (!node) return;
+
+    selectNode(nodeId);
+    const size = getNodeSize(node);
+    const point = toSvgPoint(event);
+    state.resize = {
+        mode: "node",
+        nodeId,
+        startX: node.x,
+        startY: node.y,
+        pointerOffsetX: node.x + size.width - point.x,
+        pointerOffsetY: node.y + size.height - point.y,
     };
 }
 
@@ -577,11 +621,19 @@ document.addEventListener("mousemove", event => {
     const node = getNodeById(state.resize.nodeId);
     if (!node) return;
     const point = toSvgPoint(event);
-    node.imageWidth = clampImageSize(point.x - state.resize.anchorX + state.resize.pointerOffsetX);
-    node.imageHeight = clampImageSize(point.y - state.resize.anchorY + state.resize.pointerOffsetY);
-    imageWidthInput.value = node.imageWidth;
-    imageHeightInput.value = node.imageHeight;
-    updateImageSizeLabels();
+    if (state.resize.mode === "node") {
+        const intrinsic = getIntrinsicNodeSize(node);
+        node.nodeWidth = clampNodeWidth(point.x - state.resize.startX + state.resize.pointerOffsetX);
+        node.nodeHeight = clampNodeHeight(point.y - state.resize.startY + state.resize.pointerOffsetY);
+        node.nodeWidth = Math.max(node.nodeWidth, intrinsic.width);
+        node.nodeHeight = Math.max(node.nodeHeight, intrinsic.height);
+    } else {
+        node.imageWidth = clampImageSize(point.x - state.resize.anchorX + state.resize.pointerOffsetX);
+        node.imageHeight = clampImageSize(point.y - state.resize.anchorY + state.resize.pointerOffsetY);
+        imageWidthInput.value = node.imageWidth;
+        imageHeightInput.value = node.imageHeight;
+        updateImageSizeLabels();
+    }
     render();
     scheduleAutosave(node);
 });
@@ -720,6 +772,30 @@ function ensureNodeImageSize(node) {
     node.imageHeight = clampImageSize(Number(node.imageHeight));
 }
 
+function getIntrinsicNodeSize(node) {
+    const imageSize = getNodeImageSize(node);
+    const fontSize = Number(node.fontSize) || 18;
+    const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
+    const lineCount = getNodeDisplayLines(node, hasNodeImage(node) ? 18 : 20).length;
+    const textBlockHeight = lineCount * lineHeight;
+    return hasNodeImage(node)
+        ? {
+            width: Math.max(IMAGE_NODE_WIDTH, imageSize.width + 60),
+            height: Math.max(IMAGE_NODE_HEIGHT, imageSize.height + textBlockHeight + 44)
+        }
+        : { width: BASE_NODE_WIDTH, height: Math.max(BASE_NODE_HEIGHT, textBlockHeight + 34) };
+}
+
+function clampNodeWidth(value) {
+    if (!Number.isFinite(value)) return BASE_NODE_WIDTH;
+    return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, Math.round(value)));
+}
+
+function clampNodeHeight(value) {
+    if (!Number.isFinite(value)) return BASE_NODE_HEIGHT;
+    return Math.min(MAX_NODE_HEIGHT, Math.max(MIN_NODE_HEIGHT, Math.round(value)));
+}
+
 function updateImageSizeLabels() {
     imageWidthValue.textContent = imageWidthInput.value;
     imageHeightValue.textContent = imageHeightInput.value;
@@ -740,7 +816,9 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         branchStyle: "SOLID",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
-        imageHeight: DEFAULT_IMAGE_SIZE
+        imageHeight: DEFAULT_IMAGE_SIZE,
+        nodeWidth: BASE_NODE_WIDTH,
+        nodeHeight: BASE_NODE_HEIGHT
     });
     state.map.nodes.push(node);
     selectNode(node.id);
@@ -759,12 +837,6 @@ document.getElementById("delete-node-btn").addEventListener("click", async () =>
 });
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
-
-mapStyleInput.addEventListener("change", async () => {
-    state.map.stylePreset = mapStyleInput.value;
-    render();
-    await saveMapStyle(mapStyleInput.value);
-});
 
 autoLayoutBtn.addEventListener("click", async () => {
     applyOrganicLayout();
@@ -789,14 +861,6 @@ async function saveNode(node) {
         body: JSON.stringify(node)
     });
     autosaveStatus.textContent = "Modifiche salvate.";
-}
-
-async function saveMapStyle(stylePreset) {
-    await fetch(`/api/maps/${state.map.id}/style`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stylePreset })
-    });
 }
 
 function queueAutoSubmitSelectedNode() {
@@ -883,6 +947,54 @@ function applyOrganicLayout() {
         root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 120) - rootSize.height / 2);
         placeChildren(root, angle - step / 2, angle + step / 2, 1);
     });
+
+    resolveNodeOverlaps(nodes);
+}
+
+function resolveNodeOverlaps(nodes) {
+    const padding = 28;
+    for (let iteration = 0; iteration < 45; iteration += 1) {
+        let moved = false;
+        for (let i = 0; i < nodes.length; i += 1) {
+            const first = nodes[i];
+            const firstSize = getNodeSize(first);
+            const firstCenterX = first.x + (firstSize.width / 2);
+            const firstCenterY = first.y + (firstSize.height / 2);
+            for (let j = i + 1; j < nodes.length; j += 1) {
+                const second = nodes[j];
+                const secondSize = getNodeSize(second);
+                const secondCenterX = second.x + (secondSize.width / 2);
+                const secondCenterY = second.y + (secondSize.height / 2);
+
+                const overlapX = (firstSize.width + secondSize.width) / 2 + padding - Math.abs(firstCenterX - secondCenterX);
+                const overlapY = (firstSize.height + secondSize.height) / 2 + padding - Math.abs(firstCenterY - secondCenterY);
+
+                if (overlapX > 0 && overlapY > 0) {
+                    moved = true;
+                    if (overlapX < overlapY) {
+                        const shiftX = overlapX / 2;
+                        if (firstCenterX <= secondCenterX) {
+                            first.x -= Math.round(shiftX);
+                            second.x += Math.round(shiftX);
+                        } else {
+                            first.x += Math.round(shiftX);
+                            second.x -= Math.round(shiftX);
+                        }
+                    } else {
+                        const shiftY = overlapY / 2;
+                        if (firstCenterY <= secondCenterY) {
+                            first.y -= Math.round(shiftY);
+                            second.y += Math.round(shiftY);
+                        } else {
+                            first.y += Math.round(shiftY);
+                            second.y -= Math.round(shiftY);
+                        }
+                    }
+                }
+            }
+        }
+        if (!moved) break;
+    }
 }
 
 async function persistAllNodePositions() {
@@ -894,13 +1006,11 @@ async function persistAllNodePositions() {
 async function addChildNode(parentId) {
     const parent = getNodeById(parentId);
     if (!parent) return;
-    const branchText = window.prompt("Testo del ramo (facoltativo):", "") || "";
-    const nodeText = window.prompt("Testo del nuovo nodo:", "Nuovo ramo") || "Nuovo ramo";
     const node = await createNode({
         parentId: parent.id,
-        text: normalizeNodeText(nodeText),
+        text: "Nuovo ramo",
         emoji: null,
-        branchText: branchText.trim(),
+        branchText: null,
         x: parent.x + 220,
         y: parent.y + 90,
         color: "#9FC5E8",
@@ -910,7 +1020,9 @@ async function addChildNode(parentId) {
         branchStyle: "SOLID",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
-        imageHeight: DEFAULT_IMAGE_SIZE
+        imageHeight: DEFAULT_IMAGE_SIZE,
+        nodeWidth: BASE_NODE_WIDTH,
+        nodeHeight: BASE_NODE_HEIGHT
     });
     state.map.nodes.push(node);
     selectNode(node.id);
@@ -996,6 +1108,6 @@ function slugify(value) {
         .replace(/(^-|-$)/g, "") || "mappa";
 }
 
-mapStyleInput.value = (state.map.stylePreset || "CLASSIC").toUpperCase();
+state.map.stylePreset = "CLASSIC";
 selectNode(state.map.nodes[0]?.id ?? null);
 render();

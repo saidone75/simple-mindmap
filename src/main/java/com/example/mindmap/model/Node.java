@@ -51,6 +51,10 @@ public class Node {
 
     private Integer imageHeight;
 
+    private Integer nodeWidth;
+
+    private Integer nodeHeight;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Long getMapId() { return mapId; }
@@ -83,4 +87,8 @@ public class Node {
     public void setImageWidth(Integer imageWidth) { this.imageWidth = imageWidth; }
     public Integer getImageHeight() { return imageHeight; }
     public void setImageHeight(Integer imageHeight) { this.imageHeight = imageHeight; }
+    public Integer getNodeWidth() { return nodeWidth; }
+    public void setNodeWidth(Integer nodeWidth) { this.nodeWidth = nodeWidth; }
+    public Integer getNodeHeight() { return nodeHeight; }
+    public void setNodeHeight(Integer nodeHeight) { this.nodeHeight = nodeHeight; }
 }

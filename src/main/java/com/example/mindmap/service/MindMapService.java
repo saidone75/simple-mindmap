@@ -17,6 +17,10 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class MindMapService {
     private static final int MIN_IMAGE_SIZE = 24;
     private static final int MAX_IMAGE_SIZE = 120;
+    private static final int MIN_NODE_WIDTH = 120;
+    private static final int MAX_NODE_WIDTH = 720;
+    private static final int MIN_NODE_HEIGHT = 60;
+    private static final int MAX_NODE_HEIGHT = 420;
     private static final String DEFAULT_STYLE_PRESET = "CLASSIC";
 
     private final MindMapRepository mindMapRepository;
@@ -66,6 +70,8 @@ public class MindMapService {
         root.setImageUri(null);
         root.setImageWidth(null);
         root.setImageHeight(null);
+        root.setNodeWidth(null);
+        root.setNodeHeight(null);
         nodeRepository.save(root);
 
         return savedMap;
@@ -136,6 +142,8 @@ public class MindMapService {
         node.setImageUri(normalizeImageUri(request.getImageUri()));
         node.setImageWidth(normalizeImageSize(request.getImageWidth()));
         node.setImageHeight(normalizeImageSize(request.getImageHeight()));
+        node.setNodeWidth(normalizeNodeWidth(request.getNodeWidth()));
+        node.setNodeHeight(normalizeNodeHeight(request.getNodeHeight()));
         return toDto(nodeRepository.save(node));
     }
 
@@ -157,6 +165,8 @@ public class MindMapService {
         if (request.getImageUri() != null) node.setImageUri(normalizeImageUri(request.getImageUri()));
         if (request.getImageWidth() != null) node.setImageWidth(normalizeImageSize(request.getImageWidth()));
         if (request.getImageHeight() != null) node.setImageHeight(normalizeImageSize(request.getImageHeight()));
+        if (request.getNodeWidth() != null) node.setNodeWidth(normalizeNodeWidth(request.getNodeWidth()));
+        if (request.getNodeHeight() != null) node.setNodeHeight(normalizeNodeHeight(request.getNodeHeight()));
 
         return toDto(nodeRepository.save(node));
     }
@@ -206,6 +216,8 @@ public class MindMapService {
         node.setImageUri(null);
         node.setImageWidth(null);
         node.setImageHeight(null);
+        node.setNodeWidth(null);
+        node.setNodeHeight(null);
         return nodeRepository.save(node);
     }
 
@@ -224,6 +236,16 @@ public class MindMapService {
     private Integer normalizeImageSize(Integer imageSize) {
         if (imageSize == null) return null;
         return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, imageSize));
+    }
+
+    private Integer normalizeNodeWidth(Integer nodeWidth) {
+        if (nodeWidth == null) return null;
+        return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, nodeWidth));
+    }
+
+    private Integer normalizeNodeHeight(Integer nodeHeight) {
+        if (nodeHeight == null) return null;
+        return Math.min(MAX_NODE_HEIGHT, Math.max(MIN_NODE_HEIGHT, nodeHeight));
     }
 
     private String normalizeNodeEmoji(String emoji) {
@@ -268,6 +290,8 @@ public class MindMapService {
         dto.setImageUri(node.getImageUri());
         dto.setImageWidth(node.getImageWidth());
         dto.setImageHeight(node.getImageHeight());
+        dto.setNodeWidth(node.getNodeWidth());
+        dto.setNodeHeight(node.getNodeHeight());
         return dto;
     }
 }

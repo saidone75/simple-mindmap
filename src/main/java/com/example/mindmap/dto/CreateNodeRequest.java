@@ -15,6 +15,8 @@ public class CreateNodeRequest {
     private String imageUri;
     private Integer imageWidth;
     private Integer imageHeight;
+    private Integer nodeWidth;
+    private Integer nodeHeight;
 
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
@@ -44,4 +46,8 @@ public class CreateNodeRequest {
     public void setImageWidth(Integer imageWidth) { this.imageWidth = imageWidth; }
     public Integer getImageHeight() { return imageHeight; }
     public void setImageHeight(Integer imageHeight) { this.imageHeight = imageHeight; }
+    public Integer getNodeWidth() { return nodeWidth; }
+    public void setNodeWidth(Integer nodeWidth) { this.nodeWidth = nodeWidth; }
+    public Integer getNodeHeight() { return nodeHeight; }
+    public void setNodeHeight(Integer nodeHeight) { this.nodeHeight = nodeHeight; }
 }

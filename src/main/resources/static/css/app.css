@@ -208,6 +208,12 @@ input[type="file"] {
     stroke-width: 2;
     cursor: nwse-resize;
 }
+.node-resize-handle {
+    fill: #dbeafe;
+    stroke: #1d4ed8;
+    stroke-width: 2;
+    cursor: nwse-resize;
+}
 .node-action-button {
     cursor: pointer;
 }
