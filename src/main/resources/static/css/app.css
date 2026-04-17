@@ -177,6 +177,12 @@ input[type="file"] {
 }
 .node-group { cursor: grab; }
 .node-group.selected rect { stroke: #1d4ed8; stroke-width: 3; }
+.image-resize-handle {
+    fill: #ffffff;
+    stroke: #1d4ed8;
+    stroke-width: 2;
+    cursor: nwse-resize;
+}
 @media (max-width: 980px) {
     .editor-layout { grid-template-columns: 1fr; }
 }

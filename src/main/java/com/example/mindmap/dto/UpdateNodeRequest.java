@@ -8,6 +8,8 @@ public class UpdateNodeRequest {
     private Integer fontSize;
     private String shape;
     private String imageUri;
+    private Integer imageWidth;
+    private Integer imageHeight;
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
@@ -23,4 +25,8 @@ public class UpdateNodeRequest {
     public void setShape(String shape) { this.shape = shape; }
     public String getImageUri() { return imageUri; }
     public void setImageUri(String imageUri) { this.imageUri = imageUri; }
+    public Integer getImageWidth() { return imageWidth; }
+    public void setImageWidth(Integer imageWidth) { this.imageWidth = imageWidth; }
+    public Integer getImageHeight() { return imageHeight; }
+    public void setImageHeight(Integer imageHeight) { this.imageHeight = imageHeight; }
 }

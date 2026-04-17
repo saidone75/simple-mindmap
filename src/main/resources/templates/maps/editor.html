@@ -22,7 +22,7 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo.</div>
+            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo. Se un nodo ha un'immagine, usa il pallino in basso a destra per ridimensionarla.</div>
             <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
         </section>
 
@@ -51,6 +51,10 @@
                 <button type="button" id="clear-image-btn" class="secondary-btn small-btn">Rimuovi immagine</button>
             </div>
             <input id="node-image-upload" type="file" accept="image/*">
+            <label for="node-image-width">Larghezza immagine: <span id="node-image-width-value">42</span>px</label>
+            <input id="node-image-width" type="range" min="24" max="120" value="42">
+            <label for="node-image-height">Altezza immagine: <span id="node-image-height-value">42</span>px</label>
+            <input id="node-image-height" type="range" min="24" max="120" value="42">
             <div class="image-preview-box">
                 <img id="node-image-preview" alt="Anteprima immagine nodo" />
             </div>

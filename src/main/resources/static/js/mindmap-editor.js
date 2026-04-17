@@ -3,11 +3,15 @@ const BASE_NODE_WIDTH = 180;
 const BASE_NODE_HEIGHT = 64;
 const IMAGE_NODE_WIDTH = 220;
 const IMAGE_NODE_HEIGHT = 100;
+const DEFAULT_IMAGE_SIZE = 42;
+const MIN_IMAGE_SIZE = 24;
+const MAX_IMAGE_SIZE = 120;
 
 const state = {
     map: structuredClone(initialMap),
     selectedNodeId: null,
     drag: null,
+    resize: null,
     autosaveTimer: null,
 };
 
@@ -18,6 +22,10 @@ const fontSizeInput = document.getElementById("node-font-size");
 const imageUrlInput = document.getElementById("node-image-url");
 const imageUploadInput = document.getElementById("node-image-upload");
 const imagePreview = document.getElementById("node-image-preview");
+const imageWidthInput = document.getElementById("node-image-width");
+const imageHeightInput = document.getElementById("node-image-height");
+const imageWidthValue = document.getElementById("node-image-width-value");
+const imageHeightValue = document.getElementById("node-image-height-value");
 const autosaveStatus = document.getElementById("autosave-status");
 
 function getNodeById(id) {
@@ -29,9 +37,20 @@ function hasNodeImage(node) {
 }
 
 function getNodeSize(node) {
+    const imageSize = getNodeImageSize(node);
     return hasNodeImage(node)
-        ? { width: IMAGE_NODE_WIDTH, height: IMAGE_NODE_HEIGHT }
+        ? {
+            width: Math.max(IMAGE_NODE_WIDTH, imageSize.width + 60),
+            height: Math.max(IMAGE_NODE_HEIGHT, imageSize.height + 52)
+        }
         : { width: BASE_NODE_WIDTH, height: BASE_NODE_HEIGHT };
+}
+
+function getNodeImageSize(node) {
+    return {
+        width: clampImageSize(Number(node.imageWidth) || DEFAULT_IMAGE_SIZE),
+        height: clampImageSize(Number(node.imageHeight) || DEFAULT_IMAGE_SIZE),
+    };
 }
 
 function render() {
@@ -73,7 +92,10 @@ function render() {
         group.appendChild(rect);
 
         if (hasNodeImage(node)) {
-            renderNodeImage(group, node, width, height);
+            renderNodeImage(group, node, width);
+            if (node.id === state.selectedNodeId) {
+                renderImageResizeHandle(group, node, width);
+            }
         }
 
         const text = document.createElementNS(SVG_NS, "text");
@@ -94,10 +116,7 @@ function render() {
 }
 
 function renderNodeImage(group, node, width) {
-    const imageWidth = 42;
-    const imageHeight = 42;
-    const imageX = node.x + (width - imageWidth) / 2;
-    const imageY = node.y + 12;
+    const { x: imageX, y: imageY, width: imageWidth, height: imageHeight } = getNodeImageBounds(node, width);
     const clipId = `clip-node-${node.id}`;
 
     const defs = document.createElementNS(SVG_NS, "defs");
@@ -125,6 +144,28 @@ function renderNodeImage(group, node, width) {
     group.appendChild(image);
 }
 
+function renderImageResizeHandle(group, node, nodeWidth) {
+    const bounds = getNodeImageBounds(node, nodeWidth);
+    const handle = document.createElementNS(SVG_NS, "circle");
+    handle.setAttribute("class", "image-resize-handle");
+    handle.setAttribute("cx", bounds.x + bounds.width);
+    handle.setAttribute("cy", bounds.y + bounds.height);
+    handle.setAttribute("r", "7");
+    handle.dataset.nodeId = node.id;
+    handle.addEventListener("mousedown", startImageResize);
+    group.appendChild(handle);
+}
+
+function getNodeImageBounds(node, nodeWidth) {
+    const size = getNodeImageSize(node);
+    return {
+        x: node.x + (nodeWidth - size.width) / 2,
+        y: node.y + 12,
+        width: size.width,
+        height: size.height
+    };
+}
+
 function truncate(text, max) {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
@@ -137,11 +178,16 @@ function selectNode(nodeId) {
     colorInput.value = node.color || "#FFD966";
     fontSizeInput.value = node.fontSize || 18;
     imageUrlInput.value = node.imageUri || "";
+    const imageSize = getNodeImageSize(node);
+    imageWidthInput.value = imageSize.width;
+    imageHeightInput.value = imageSize.height;
+    updateImageSizeLabels();
     updateImagePreview(node.imageUri || "");
     render();
 }
 
 function startDrag(event) {
+    if (state.resize) return;
     const nodeId = Number(event.currentTarget.dataset.id);
     selectNode(nodeId);
     const node = getNodeById(nodeId);
@@ -152,6 +198,26 @@ function startDrag(event) {
         nodeId,
         offsetX: point.x - node.x,
         offsetY: point.y - node.y,
+    };
+}
+
+function startImageResize(event) {
+    event.stopPropagation();
+    event.preventDefault();
+    const nodeId = Number(event.currentTarget.dataset.nodeId);
+    const node = getNodeById(nodeId);
+    if (!node) return;
+
+    selectNode(nodeId);
+    const nodeSize = getNodeSize(node);
+    const bounds = getNodeImageBounds(node, nodeSize.width);
+    const point = toSvgPoint(event);
+    state.resize = {
+        nodeId,
+        anchorX: bounds.x,
+        anchorY: bounds.y,
+        pointerOffsetX: bounds.x + bounds.width - point.x,
+        pointerOffsetY: bounds.y + bounds.height - point.y,
     };
 }
 
@@ -173,8 +239,23 @@ document.addEventListener("mousemove", event => {
     scheduleAutosave(node);
 });
 
+document.addEventListener("mousemove", event => {
+    if (!state.resize) return;
+    const node = getNodeById(state.resize.nodeId);
+    if (!node) return;
+    const point = toSvgPoint(event);
+    node.imageWidth = clampImageSize(point.x - state.resize.anchorX + state.resize.pointerOffsetX);
+    node.imageHeight = clampImageSize(point.y - state.resize.anchorY + state.resize.pointerOffsetY);
+    imageWidthInput.value = node.imageWidth;
+    imageHeightInput.value = node.imageHeight;
+    updateImageSizeLabels();
+    render();
+    scheduleAutosave(node);
+});
+
 document.addEventListener("mouseup", () => {
     state.drag = null;
+    state.resize = null;
 });
 
 document.getElementById("save-node-btn").addEventListener("click", async () => {
@@ -189,6 +270,7 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
     node.imageUri = normalizeImageUri(imageUrlInput.value);
+    ensureNodeImageSize(node);
     imageUrlInput.value = node.imageUri || "";
     updateImagePreview(node.imageUri || "");
     render();
@@ -200,6 +282,11 @@ document.getElementById("clear-image-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
     node.imageUri = null;
+    node.imageWidth = DEFAULT_IMAGE_SIZE;
+    node.imageHeight = DEFAULT_IMAGE_SIZE;
+    imageWidthInput.value = DEFAULT_IMAGE_SIZE;
+    imageHeightInput.value = DEFAULT_IMAGE_SIZE;
+    updateImageSizeLabels();
     render();
 });
 
@@ -214,9 +301,31 @@ imageUploadInput.addEventListener("change", event => {
         const node = getNodeById(state.selectedNodeId);
         if (!node) return;
         node.imageUri = dataUrl;
+        ensureNodeImageSize(node);
+        imageWidthInput.value = node.imageWidth;
+        imageHeightInput.value = node.imageHeight;
+        updateImageSizeLabels();
         render();
     };
     reader.readAsDataURL(file);
+});
+
+imageWidthInput.addEventListener("input", () => {
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+    node.imageWidth = clampImageSize(Number(imageWidthInput.value));
+    imageWidthInput.value = node.imageWidth;
+    updateImageSizeLabels();
+    render();
+});
+
+imageHeightInput.addEventListener("input", () => {
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+    node.imageHeight = clampImageSize(Number(imageHeightInput.value));
+    imageHeightInput.value = node.imageHeight;
+    updateImageSizeLabels();
+    render();
 });
 
 function updateImagePreview(uri) {
@@ -234,11 +343,28 @@ function applyFormToNode(node) {
     node.color = colorInput.value;
     node.fontSize = Number(fontSizeInput.value);
     node.imageUri = normalizeImageUri(imageUrlInput.value);
+    node.imageWidth = clampImageSize(Number(imageWidthInput.value));
+    node.imageHeight = clampImageSize(Number(imageHeightInput.value));
 }
 
 function normalizeImageUri(value) {
     const trimmed = (value || "").trim();
     return trimmed.length ? trimmed : null;
+}
+
+function clampImageSize(value) {
+    if (!Number.isFinite(value)) return DEFAULT_IMAGE_SIZE;
+    return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, Math.round(value)));
+}
+
+function ensureNodeImageSize(node) {
+    node.imageWidth = clampImageSize(Number(node.imageWidth));
+    node.imageHeight = clampImageSize(Number(node.imageHeight));
+}
+
+function updateImageSizeLabels() {
+    imageWidthValue.textContent = imageWidthInput.value;
+    imageHeightValue.textContent = imageHeightInput.value;
 }
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
@@ -250,7 +376,9 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         color: "#D9D2E9",
         fontSize: 18,
         shape: "ROUNDED",
-        imageUri: null
+        imageUri: null,
+        imageWidth: DEFAULT_IMAGE_SIZE,
+        imageHeight: DEFAULT_IMAGE_SIZE
     });
     state.map.nodes.push(node);
     selectNode(node.id);
@@ -268,7 +396,9 @@ document.getElementById("add-child-btn").addEventListener("click", async () => {
         color: "#9FC5E8",
         fontSize: 18,
         shape: "ROUNDED",
-        imageUri: null
+        imageUri: null,
+        imageWidth: DEFAULT_IMAGE_SIZE,
+        imageHeight: DEFAULT_IMAGE_SIZE
     });
     state.map.nodes.push(node);
     selectNode(node.id);

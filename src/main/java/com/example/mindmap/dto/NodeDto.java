@@ -10,6 +10,8 @@ public class NodeDto {
     private Integer fontSize;
     private String shape;
     private String imageUri;
+    private Integer imageWidth;
+    private Integer imageHeight;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -29,4 +31,8 @@ public class NodeDto {
     public void setShape(String shape) { this.shape = shape; }
     public String getImageUri() { return imageUri; }
     public void setImageUri(String imageUri) { this.imageUri = imageUri; }
+    public Integer getImageWidth() { return imageWidth; }
+    public void setImageWidth(Integer imageWidth) { this.imageWidth = imageWidth; }
+    public Integer getImageHeight() { return imageHeight; }
+    public void setImageHeight(Integer imageHeight) { this.imageHeight = imageHeight; }
 }
