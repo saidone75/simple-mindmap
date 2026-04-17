@@ -72,12 +72,16 @@ function hasNodeImage(node) {
 
 function getNodeSize(node) {
     const imageSize = getNodeImageSize(node);
+    const fontSize = Number(node.fontSize) || 18;
+    const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
+    const lineCount = getNodeDisplayLines(node, hasNodeImage(node) ? 18 : 20).length;
+    const textBlockHeight = lineCount * lineHeight;
     return hasNodeImage(node)
         ? {
             width: Math.max(IMAGE_NODE_WIDTH, imageSize.width + 60),
-            height: Math.max(IMAGE_NODE_HEIGHT, imageSize.height + 52)
+            height: Math.max(IMAGE_NODE_HEIGHT, imageSize.height + textBlockHeight + 44)
         }
-        : { width: BASE_NODE_WIDTH, height: BASE_NODE_HEIGHT };
+        : { width: BASE_NODE_WIDTH, height: Math.max(BASE_NODE_HEIGHT, textBlockHeight + 34) };
 }
 
 function getNodeImageSize(node) {
@@ -230,13 +234,25 @@ function render() {
         renderNodeActionButtons(group, node, width);
 
         const text = document.createElementNS(SVG_NS, "text");
+        const lines = getNodeDisplayLines(node, hasNodeImage(node) ? 18 : 20);
+        const fontSize = Number(node.fontSize) || 18;
+        const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
+        const firstLineY = hasNodeImage(node)
+            ? node.y + height - 16 - ((lines.length - 1) * lineHeight)
+            : node.y + ((height - ((lines.length - 1) * lineHeight)) / 2);
         text.setAttribute("class", "node-text");
         text.setAttribute("x", node.x + width / 2);
-        text.setAttribute("y", hasNodeImage(node) ? node.y + height - 18 : node.y + height / 2 + 2);
+        text.setAttribute("y", firstLineY);
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("dominant-baseline", "middle");
-        text.setAttribute("font-size", node.fontSize || 18);
-        text.textContent = truncate(node.text || "Nodo", hasNodeImage(node) ? 18 : 20);
+        text.setAttribute("font-size", fontSize);
+        lines.forEach((line, index) => {
+            const tspan = document.createElementNS(SVG_NS, "tspan");
+            tspan.setAttribute("x", node.x + width / 2);
+            tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
+            tspan.textContent = line || " ";
+            text.appendChild(tspan);
+        });
         group.appendChild(text);
 
         group.addEventListener("mousedown", startDrag);
@@ -364,6 +380,20 @@ function getNodeImageBounds(node, nodeWidth) {
 
 function truncate(text, max) {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function normalizeNodeText(value) {
+    const normalized = (value || "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\u00a0/g, " ")
+        .trim();
+    return normalized.length ? normalized : "Nodo";
+}
+
+function getNodeDisplayLines(node, maxLineLength) {
+    return normalizeNodeText(node.text || "Nodo")
+        .split("\n")
+        .map(line => truncate(line, maxLineLength));
 }
 
 function selectNode(nodeId) {
@@ -574,7 +604,7 @@ function updateImagePreview(uri) {
 }
 
 function applyFormToNode(node) {
-    node.text = textInput.value.trim() || "Nodo";
+    node.text = normalizeNodeText(textInput.value);
     node.color = colorInput.value;
     node.branchColor = branchColorInput.value;
     node.branchStyle = branchStyleInput.value;
@@ -744,12 +774,9 @@ async function deleteNodeWithChecks(nodeId) {
 }
 
 async function quickEdit(nodeId) {
-    const node = getNodeById(nodeId);
-    const value = prompt("Testo del nodo", node.text || "Nodo");
-    if (value == null) return;
-    node.text = value.trim() || "Nodo";
-    render();
-    await saveNode(node);
+    selectNode(nodeId);
+    textInput.focus();
+    textInput.setSelectionRange(0, textInput.value.length);
 }
 
 function exportPng() {
