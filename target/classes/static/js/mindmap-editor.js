@@ -45,6 +45,10 @@ function hasNodeImage(node) {
     return !!(node.imageUri && node.imageUri.trim());
 }
 
+function hasNodeEmoji(node) {
+    return !!normalizeNodeEmoji(node.emoji);
+}
+
 function getNodeSize(node) {
     const imageSize = getNodeImageSize(node);
     const fontSize = Number(node.fontSize) || 18;
@@ -250,12 +254,31 @@ function render() {
             renderNodeActionButtons(group, node, width);
         }
 
+        const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
+        if (emojiValue && !sketchPreset) {
+            const emoji = document.createElementNS(SVG_NS, "text");
+            emoji.setAttribute("class", "node-emoji");
+            emoji.setAttribute("x", node.x + width / 2);
+            emoji.setAttribute("y", node.y + 28);
+            emoji.setAttribute("text-anchor", "middle");
+            emoji.setAttribute("dominant-baseline", "middle");
+            emoji.textContent = emojiValue;
+            emoji.addEventListener("mousedown", event => event.stopPropagation());
+            emoji.addEventListener("click", async event => {
+                event.stopPropagation();
+                await quickEdit(node.id);
+            });
+            group.appendChild(emoji);
+        }
+
         const text = document.createElementNS(SVG_NS, "text");
         const lines = getNodeDisplayLines(node, sketchPreset ? 24 : (hasNodeImage(node) ? 18 : 20));
         const fontSize = Number(node.fontSize) || 18;
         const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
         const firstLineY = hasNodeImage(node) && !sketchPreset
             ? node.y + height - 16 - ((lines.length - 1) * lineHeight)
+            : emojiValue && !sketchPreset
+                ? node.y + ((height - ((lines.length - 1) * lineHeight)) / 2) + 14
             : node.y + ((height - ((lines.length - 1) * lineHeight)) / 2);
         text.setAttribute("class", "node-text");
         text.setAttribute("x", node.x + width / 2);
@@ -269,6 +292,11 @@ function render() {
             tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
             tspan.textContent = line || " ";
             text.appendChild(tspan);
+        });
+        text.addEventListener("mousedown", event => event.stopPropagation());
+        text.addEventListener("click", async event => {
+            event.stopPropagation();
+            await quickEdit(node.id);
         });
         group.appendChild(text);
 
@@ -337,44 +365,47 @@ function renderImageResizeHandle(group, node, nodeWidth) {
 function renderNodeActionButtons(group, node, nodeWidth) {
     const actions = [
         {
-            key: "edit-branch-text",
-            label: "TXT",
-            title: "Testo ramo",
-            onClick: () => quickEditBranchText(node.id)
-        },
-        {
-            key: "edit-emoji",
-            label: "😊",
-            title: "Emoji nodo",
-            onClick: () => quickEditEmoji(node.id)
-        },
-        {
-            key: "delete-node",
-            label: "X",
-            title: "Elimina nodo",
-            onClick: () => deleteNodeWithChecks(node.id)
+            key: "add-child",
+            label: "➕",
+            title: "Aggiungi nodo figlio",
+            onClick: () => addChildNode(node.id)
         },
         {
             key: "add-image",
-            label: "Img",
+            label: "🖼️",
             title: "Aggiungi immagine",
             onClick: () => startImageUploadForNode(node.id)
         },
         {
-            key: "add-child",
-            label: "+",
-            title: "Aggiungi nodo figlio",
-            onClick: () => addChildNode(node.id)
+            key: "edit-emoji",
+            label: "😀",
+            title: "Emoji nodo",
+            onClick: () => quickEditEmoji(node.id)
+        },
+        {
+            key: "edit-branch-text",
+            label: "🌿",
+            title: "Testo ramo",
+            onClick: () => quickEditBranchText(node.id)
+        },
+        {
+            key: "delete-node",
+            label: "🗑️",
+            title: "Elimina nodo",
+            onClick: () => deleteNodeWithChecks(node.id)
         }
     ];
 
+    const spacing = 34;
+    const startX = node.x + (nodeWidth / 2) - ((actions.length - 1) * spacing / 2);
+
     actions.forEach((action, index) => {
-        const x = node.x + nodeWidth - 24 - (index * 40);
+        const x = startX + (index * spacing);
         const button = document.createElementNS(SVG_NS, "g");
         button.setAttribute("class", "node-action-button");
         button.dataset.nodeId = node.id;
         button.dataset.action = action.key;
-        button.setAttribute("transform", `translate(${x}, ${node.y + 18})`);
+        button.setAttribute("transform", `translate(${x}, ${node.y + 14})`);
         button.addEventListener("mousedown", event => {
             event.stopPropagation();
             event.preventDefault();
@@ -387,12 +418,12 @@ function renderNodeActionButtons(group, node, nodeWidth) {
         });
 
         const rect = document.createElementNS(SVG_NS, "rect");
-        rect.setAttribute("x", "-18");
-        rect.setAttribute("y", "-13");
-        rect.setAttribute("rx", "8");
-        rect.setAttribute("ry", "8");
-        rect.setAttribute("width", "36");
-        rect.setAttribute("height", "26");
+        rect.setAttribute("x", "-14");
+        rect.setAttribute("y", "-14");
+        rect.setAttribute("rx", "14");
+        rect.setAttribute("ry", "14");
+        rect.setAttribute("width", "28");
+        rect.setAttribute("height", "28");
         button.appendChild(rect);
 
         const icon = document.createElementNS(SVG_NS, "text");
@@ -426,6 +457,11 @@ function renderBranchLabel(node, cx, cy, x1, y1, x2, y2) {
     }
     const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
     label.setAttribute("transform", `rotate(${Math.max(-24, Math.min(24, angle))}, ${cx}, ${cy - 6})`);
+    label.addEventListener("mousedown", event => event.stopPropagation());
+    label.addEventListener("click", async event => {
+        event.stopPropagation();
+        await quickEditBranchText(node.id);
+    });
     svg.appendChild(label);
 }
 
@@ -452,10 +488,8 @@ function normalizeNodeText(value) {
 }
 
 function getNodeDisplayLines(node, maxLineLength) {
-    const prefix = normalizeNodeEmoji(node.emoji);
     const base = normalizeNodeText(node.text || "Nodo");
-    const withEmoji = prefix ? `${prefix} ${base}` : base;
-    return withEmoji
+    return base
         .split("\n")
         .map(line => truncate(line, maxLineLength));
 }
@@ -569,6 +603,10 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
     node.imageUri = normalizeImageUri(imageUrlInput.value);
+    if (hasNodeImage(node)) {
+        node.emoji = "";
+        nodeEmojiInput.value = "";
+    }
     ensureNodeImageSize(node);
     imageUrlInput.value = node.imageUri || "";
     updateImagePreview(node.imageUri || "");
@@ -603,6 +641,8 @@ imageUploadInput.addEventListener("change", event => {
         imageUrlInput.value = dataUrl;
         updateImagePreview(dataUrl);
         node.imageUri = dataUrl;
+        node.emoji = "";
+        nodeEmojiInput.value = "";
         ensureNodeImageSize(node);
         imageWidthInput.value = node.imageWidth;
         imageHeightInput.value = node.imageHeight;
@@ -658,6 +698,11 @@ function applyFormToNode(node) {
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     node.imageWidth = clampImageSize(Number(imageWidthInput.value));
     node.imageHeight = clampImageSize(Number(imageHeightInput.value));
+    if (hasNodeImage(node)) {
+        node.emoji = "";
+    } else if (hasNodeEmoji(node)) {
+        node.imageUri = null;
+    }
 }
 
 function normalizeImageUri(value) {
@@ -911,6 +956,11 @@ async function quickEditEmoji(nodeId) {
     const value = window.prompt("Inserisci una emoji per il nodo:", node.emoji || "");
     if (value === null) return;
     node.emoji = normalizeNodeEmoji(value);
+    if (node.emoji) {
+        node.imageUri = null;
+        imageUrlInput.value = "";
+        updateImagePreview("");
+    }
     selectNode(nodeId);
     render();
     await saveNode(node);

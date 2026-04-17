@@ -178,9 +178,15 @@ input[type="file"] {
 }
 .node-text {
     user-select: none;
-    pointer-events: none;
+    pointer-events: all;
+    cursor: text;
     font-weight: 700;
     fill: #1f2937;
+}
+.node-emoji {
+    font-size: 24px;
+    pointer-events: all;
+    cursor: text;
 }
 .connector {
     fill: none;
@@ -206,17 +212,18 @@ input[type="file"] {
     cursor: pointer;
 }
 .node-action-button rect {
-    fill: #f8fafc;
-    stroke: #3b82f6;
-    stroke-width: 2;
+    fill: #ffffff;
+    stroke: #bfdbfe;
+    stroke-width: 1.6;
+    filter: drop-shadow(0 4px 8px rgba(30, 64, 175, 0.15));
 }
 .node-action-button:hover rect {
-    fill: #dbeafe;
+    fill: #eff6ff;
+    stroke: #60a5fa;
 }
 .node-action-icon {
-    font-size: 11px;
-    font-weight: 700;
-    fill: #1d4ed8;
+    font-size: 14px;
+    fill: #1e40af;
     user-select: none;
     pointer-events: none;
 }
@@ -224,7 +231,8 @@ input[type="file"] {
     fill: #374151;
     font-size: 13px;
     font-weight: 700;
-    pointer-events: none;
+    pointer-events: all;
+    cursor: text;
 }
 .connector-sketch {
     stroke-linecap: round;
