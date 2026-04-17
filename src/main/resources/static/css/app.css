@@ -114,6 +114,9 @@ input[type="file"] {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
 }
+.inline-actions .full-row-btn {
+    grid-column: 1 / -1;
+}
 .map-card {
     background: #fbfdff;
     border: 1px solid var(--border);
@@ -181,6 +184,7 @@ input[type="file"] {
     stroke: #7c8a9a;
     stroke-width: 3;
     opacity: 0.9;
+    stroke-linecap: round;
 }
 .node-group { cursor: grab; }
 .node-group rect {

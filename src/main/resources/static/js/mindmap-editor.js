@@ -34,6 +34,14 @@ const THEME_PRESETS = {
         connectorPalette: ["#ff5d8f", "#7b2cbf", "#3a86ff", "#ff9f1c", "#2ec4b6"]
     }
 };
+const HAND_DRAWN_BRANCH_COLORS = ["#ef476f", "#118ab2", "#06d6a0", "#f78c27", "#9b5de5", "#ff006e"];
+const HAND_DRAWN_NODE_COLORS_BY_DEPTH = {
+    0: "#fff176",
+    1: "#ffeaa7",
+    2: "#d4f1f4",
+    3: "#f7d6e0",
+    4: "#d8f3dc"
+};
 
 const state = {
     map: structuredClone(initialMap),
@@ -95,6 +103,48 @@ function getActiveTheme() {
     return THEME_PRESETS[state.map.stylePreset] || THEME_PRESETS[DEFAULT_MAP_STYLE];
 }
 
+function buildDepthMap(nodes) {
+    const byId = new Map(nodes.map(node => [node.id, node]));
+    const depthMap = new Map();
+    const visiting = new Set();
+
+    function resolveDepth(node) {
+        if (depthMap.has(node.id)) return depthMap.get(node.id);
+        if (node.parentId == null || !byId.has(node.parentId)) {
+            depthMap.set(node.id, 0);
+            return 0;
+        }
+        if (visiting.has(node.id)) {
+            depthMap.set(node.id, 0);
+            return 0;
+        }
+        visiting.add(node.id);
+        const depth = resolveDepth(byId.get(node.parentId)) + 1;
+        visiting.delete(node.id);
+        depthMap.set(node.id, depth);
+        return depth;
+    }
+
+    for (const node of nodes) {
+        resolveDepth(node);
+    }
+    return depthMap;
+}
+
+function getBranchRootId(node, byId) {
+    let current = node;
+    while (current?.parentId != null && byId.has(current.parentId)) {
+        const parent = byId.get(current.parentId);
+        if (parent.parentId == null) return current.id;
+        current = parent;
+    }
+    return node.id;
+}
+
+function colorForDepth(depth) {
+    return HAND_DRAWN_NODE_COLORS_BY_DEPTH[Math.min(depth, 4)] || HAND_DRAWN_NODE_COLORS_BY_DEPTH[4];
+}
+
 function applyMapThemeVisuals() {
     const theme = getActiveTheme();
     editorPage.classList.remove("theme-classic", "theme-playful", "theme-ocean", "theme-candy");
@@ -136,17 +186,18 @@ function renderConnectorDefs() {
     svg.appendChild(defs);
 }
 
-function applyBranchStyle(path, node, connectorIndex) {
+function applyBranchStyle(path, node, connectorIndex, depth = 1) {
     const theme = getActiveTheme();
     const style = (node.branchStyle || "SOLID").toUpperCase();
     const fallbackColor = theme.connectorPalette[connectorIndex % theme.connectorPalette.length];
     const strokeColor = node.branchColor || fallbackColor || "#7c8a9a";
 
     path.setAttribute("stroke", strokeColor);
-    path.setAttribute("stroke-width", "3");
+    const baseWidth = Math.max(2, 6 - Math.min(depth, 4));
+    path.setAttribute("stroke-width", String(baseWidth));
     path.removeAttribute("stroke-dasharray");
     path.removeAttribute("marker-end");
-    path.removeAttribute("stroke-linecap");
+    path.setAttribute("stroke-linecap", "round");
 
     switch (style) {
         case "DASHED":
@@ -157,10 +208,10 @@ function applyBranchStyle(path, node, connectorIndex) {
             path.setAttribute("stroke-linecap", "round");
             break;
         case "BOLD":
-            path.setAttribute("stroke-width", "5");
+            path.setAttribute("stroke-width", String(baseWidth + 2));
             break;
         case "DOUBLE":
-            path.setAttribute("stroke-width", "6");
+            path.setAttribute("stroke-width", String(baseWidth + 2));
             path.setAttribute("stroke-dasharray", "1 2");
             break;
         case "ZIGZAG":
@@ -170,7 +221,7 @@ function applyBranchStyle(path, node, connectorIndex) {
             path.setAttribute("marker-end", "url(#arrow-head)");
             break;
         case "BOLD_ARROW":
-            path.setAttribute("stroke-width", "5");
+            path.setAttribute("stroke-width", String(baseWidth + 2));
             path.setAttribute("marker-end", "url(#arrow-head-bold)");
             break;
         default:
@@ -182,6 +233,7 @@ function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
     applyMapThemeVisuals();
+    const depthMap = buildDepthMap(state.map.nodes);
 
     let connectorIndex = 0;
     for (const node of state.map.nodes) {
@@ -196,17 +248,21 @@ function render() {
                 const x2 = node.x + nodeSize.width / 2;
                 const y2 = node.y + nodeSize.height / 2;
                 const cx = (x1 + x2) / 2;
-                const cy = (y1 + y2) / 2 - 28;
+                const depth = depthMap.get(node.id) || 1;
+                const bend = Math.max(22, 44 - depth * 4);
+                const direction = x2 >= x1 ? -1 : 1;
+                const cy = (y1 + y2) / 2 + (direction * bend);
 
                 path.setAttribute("class", "connector");
                 path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-                applyBranchStyle(path, node, connectorIndex++);
+                applyBranchStyle(path, node, connectorIndex++, depth);
                 svg.appendChild(path);
             }
         }
     }
 
     for (const node of state.map.nodes) {
+        const depth = depthMap.get(node.id) || 0;
         const { width, height } = getNodeSize(node);
         const group = document.createElementNS(SVG_NS, "g");
         group.setAttribute("class", `node-group${node.id === state.selectedNodeId ? " selected" : ""}`);
@@ -215,8 +271,8 @@ function render() {
         const rect = document.createElementNS(SVG_NS, "rect");
         rect.setAttribute("x", node.x);
         rect.setAttribute("y", node.y);
-        rect.setAttribute("rx", 18);
-        rect.setAttribute("ry", 18);
+        rect.setAttribute("rx", depth === 0 ? 10 : 20);
+        rect.setAttribute("ry", depth === 0 ? 10 : 20);
         rect.setAttribute("width", width);
         rect.setAttribute("height", height);
         rect.setAttribute("fill", node.color || "#FFD966");
@@ -515,6 +571,10 @@ document.getElementById("apply-branch-style-all-btn").addEventListener("click", 
     autosaveStatus.textContent = "Stile rami applicato a tutta la mappa.";
 });
 
+document.getElementById("render-sketch-btn").addEventListener("click", async () => {
+    await applyHandDrawnRenderPass();
+});
+
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -723,6 +783,45 @@ async function saveMapStyle(stylePreset) {
     }
     autosaveStatus.textContent = "Stile mappa salvato.";
     render();
+}
+
+async function applyHandDrawnRenderPass() {
+    if (!state.map.nodes.length) return;
+    autosaveStatus.textContent = "Render finale in corso...";
+    await saveMapStyle("PLAYFUL");
+
+    const byId = new Map(state.map.nodes.map(node => [node.id, node]));
+    const depthMap = buildDepthMap(state.map.nodes);
+    const branchColorByTopLevel = new Map();
+    let paletteIndex = 0;
+
+    for (const node of state.map.nodes) {
+        const depth = depthMap.get(node.id) || 0;
+        if (depth === 0) {
+            node.color = "#fff176";
+            node.fontSize = 30;
+            node.branchStyle = "BOLD";
+            node.branchColor = HAND_DRAWN_BRANCH_COLORS[paletteIndex % HAND_DRAWN_BRANCH_COLORS.length];
+            paletteIndex += 1;
+            continue;
+        }
+
+        const topLevelBranchNodeId = getBranchRootId(node, byId);
+        if (!branchColorByTopLevel.has(topLevelBranchNodeId)) {
+            branchColorByTopLevel.set(
+                topLevelBranchNodeId,
+                HAND_DRAWN_BRANCH_COLORS[branchColorByTopLevel.size % HAND_DRAWN_BRANCH_COLORS.length]
+            );
+        }
+        node.branchColor = branchColorByTopLevel.get(topLevelBranchNodeId);
+        node.color = colorForDepth(depth);
+        node.fontSize = Math.max(16, 26 - depth * 2);
+        node.branchStyle = depth <= 1 ? "BOLD" : depth <= 2 ? "SOLID" : "DASHED";
+    }
+
+    render();
+    await Promise.all(state.map.nodes.map(node => saveNode(node)));
+    autosaveStatus.textContent = "Render finale applicato: stile hand-drawn pronto.";
 }
 
 async function fetchMap() {
