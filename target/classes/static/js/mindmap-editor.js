@@ -12,6 +12,11 @@ const MIN_NODE_HEIGHT = 60;
 const MAX_NODE_HEIGHT = 420;
 const MAP_CENTER_X = 700;
 const MAP_CENTER_Y = 450;
+const BASE_CANVAS_WIDTH = 1400;
+const BASE_CANVAS_HEIGHT = 900;
+const CANVAS_PADDING = 180;
+const MIN_ZOOM_PERCENT = 50;
+const MAX_ZOOM_PERCENT = 200;
 
 const state = {
     map: structuredClone(initialMap),
@@ -39,6 +44,8 @@ const autosaveStatus = document.getElementById("autosave-status");
 const nodeEmojiInput = document.getElementById("node-emoji");
 const branchTextInput = document.getElementById("branch-text");
 const autoLayoutBtn = document.getElementById("auto-layout-btn");
+const zoomInput = document.getElementById("zoom-control");
+const zoomValue = document.getElementById("zoom-value");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
@@ -330,6 +337,35 @@ function render() {
         group.addEventListener("click", () => selectNode(node.id));
         group.addEventListener("dblclick", () => quickEdit(node.id));
         svg.appendChild(group);
+    }
+    applyCanvasViewport();
+}
+
+function getCanvasBounds() {
+    let maxX = BASE_CANVAS_WIDTH - CANVAS_PADDING;
+    let maxY = BASE_CANVAS_HEIGHT - CANVAS_PADDING;
+    for (const node of state.map.nodes) {
+        const nodeSize = isSketchPreset() ? getSketchNodeSize(node) : getNodeSize(node);
+        maxX = Math.max(maxX, node.x + nodeSize.width);
+        maxY = Math.max(maxY, node.y + nodeSize.height);
+    }
+    return {
+        width: Math.max(BASE_CANVAS_WIDTH, Math.ceil(maxX + CANVAS_PADDING)),
+        height: Math.max(BASE_CANVAS_HEIGHT, Math.ceil(maxY + CANVAS_PADDING))
+    };
+}
+
+function applyCanvasViewport() {
+    const zoomPercent = Number(zoomInput?.value) || 100;
+    const clampedZoomPercent = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, zoomPercent));
+    const zoomFactor = clampedZoomPercent / 100;
+    const { width, height } = getCanvasBounds();
+
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("width", String(Math.round(width * zoomFactor)));
+    svg.setAttribute("height", String(Math.round(height * zoomFactor)));
+    if (zoomValue) {
+        zoomValue.textContent = `${clampedZoomPercent}%`;
     }
 }
 
@@ -837,6 +873,9 @@ document.getElementById("delete-node-btn").addEventListener("click", async () =>
 });
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
+if (zoomInput) {
+    zoomInput.addEventListener("input", () => applyCanvasViewport());
+}
 
 autoLayoutBtn.addEventListener("click", async () => {
     applyOrganicLayout();
@@ -1008,7 +1047,7 @@ async function addChildNode(parentId) {
     if (!parent) return;
     const node = await createNode({
         parentId: parent.id,
-        text: "Nuovo ramo",
+        text: "Nuovo nodo",
         emoji: null,
         branchText: null,
         x: parent.x + 220,

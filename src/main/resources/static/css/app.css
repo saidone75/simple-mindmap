@@ -139,9 +139,31 @@ input[type="file"] {
     color: var(--muted);
     font-size: 0.95rem;
 }
+.canvas-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    color: var(--muted);
+}
+.canvas-toolbar label {
+    font-weight: 600;
+}
+#zoom-control {
+    width: 180px;
+}
+#zoom-value {
+    min-width: 48px;
+    font-weight: 600;
+    color: #334155;
+}
+.canvas-scroll-area {
+    min-width: 100%;
+}
 #mindmap-canvas {
-    width: 100%;
-    min-height: 78vh;
+    display: block;
+    min-width: 1400px;
+    min-height: 900px;
     background: linear-gradient(#fff, #fbfdff);
     border: 1px dashed #d7dee7;
     border-radius: 20px;
