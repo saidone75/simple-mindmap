@@ -6,6 +6,8 @@ const IMAGE_NODE_HEIGHT = 130;
 const DEFAULT_IMAGE_SIZE = 42;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
+const MAP_CENTER_X = 700;
+const MAP_CENTER_Y = 450;
 
 const state = {
     map: structuredClone(initialMap),
@@ -32,6 +34,8 @@ const imageHeightValue = document.getElementById("node-image-height-value");
 const autosaveStatus = document.getElementById("autosave-status");
 const nodeEmojiInput = document.getElementById("node-emoji");
 const branchTextInput = document.getElementById("branch-text");
+const mapStyleInput = document.getElementById("map-style");
+const autoLayoutBtn = document.getElementById("auto-layout-btn");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
@@ -60,6 +64,19 @@ function getNodeImageSize(node) {
         width: clampImageSize(Number(node.imageWidth) || DEFAULT_IMAGE_SIZE),
         height: clampImageSize(Number(node.imageHeight) || DEFAULT_IMAGE_SIZE),
     };
+}
+
+function isSketchPreset() {
+    return (state.map.stylePreset || "CLASSIC").toUpperCase() === "PLAYFUL";
+}
+
+function getSketchNodeSize(node) {
+    const lines = getNodeDisplayLines(node, 24);
+    const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
+    const fontSize = Number(node.fontSize) || 18;
+    const width = Math.max(120, (longest * (fontSize * 0.65)) + 36);
+    const height = Math.max(56, (lines.length * (fontSize * 1.2)) + 28);
+    return { width, height };
 }
 
 function buildDepthMap(nodes) {
@@ -169,13 +186,14 @@ function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
     const depthMap = buildDepthMap(state.map.nodes);
+    const sketchPreset = isSketchPreset();
 
     for (const node of state.map.nodes) {
         if (node.parentId != null) {
             const parent = getNodeById(node.parentId);
             if (parent) {
-                const parentSize = getNodeSize(parent);
-                const nodeSize = getNodeSize(node);
+                const parentSize = sketchPreset ? getSketchNodeSize(parent) : getNodeSize(parent);
+                const nodeSize = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
                 const path = document.createElementNS(SVG_NS, "path");
                 const x1 = parent.x + parentSize.width / 2;
                 const y1 = parent.y + parentSize.height / 2;
@@ -190,6 +208,11 @@ function render() {
                 path.setAttribute("class", "connector");
                 path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
                 applyBranchStyle(path, node, depth);
+                if (sketchPreset) {
+                    path.classList.add("connector-sketch");
+                    path.removeAttribute("marker-end");
+                    path.setAttribute("stroke-width", String(Math.max(2.5, 5.5 - Math.min(depth, 3))));
+                }
                 svg.appendChild(path);
                 renderBranchLabel(node, cx, cy, x1, y1, x2, y2);
             }
@@ -198,37 +221,40 @@ function render() {
 
     for (const node of state.map.nodes) {
         const depth = depthMap.get(node.id) || 0;
-        const { width, height } = getNodeSize(node);
+        const { width, height } = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
         const group = document.createElementNS(SVG_NS, "g");
-        group.setAttribute("class", `node-group${node.id === state.selectedNodeId ? " selected" : ""}`);
+        const selectedClass = node.id === state.selectedNodeId ? " selected" : "";
+        group.setAttribute("class", `node-group${selectedClass}${sketchPreset ? " sketch-node" : ""}`);
         group.dataset.id = node.id;
 
         const rect = document.createElementNS(SVG_NS, "rect");
         rect.setAttribute("x", node.x);
         rect.setAttribute("y", node.y);
-        rect.setAttribute("rx", depth === 0 ? 10 : 20);
-        rect.setAttribute("ry", depth === 0 ? 10 : 20);
+        rect.setAttribute("rx", sketchPreset ? 16 : depth === 0 ? 10 : 20);
+        rect.setAttribute("ry", sketchPreset ? 16 : depth === 0 ? 10 : 20);
         rect.setAttribute("width", width);
         rect.setAttribute("height", height);
-        rect.setAttribute("fill", node.color || "#FFD966");
-        rect.setAttribute("stroke", "#546170");
-        rect.setAttribute("stroke-width", "1.5");
+        rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : (node.color || "#FFD966"));
+        rect.setAttribute("stroke", sketchPreset ? "transparent" : "#546170");
+        rect.setAttribute("stroke-width", sketchPreset ? "0" : "1.5");
         group.appendChild(rect);
 
-        if (hasNodeImage(node)) {
+        if (hasNodeImage(node) && !sketchPreset) {
             renderNodeImage(group, node, width);
             if (node.id === state.selectedNodeId) {
                 renderImageResizeHandle(group, node, width);
             }
         }
 
-        renderNodeActionButtons(group, node, width);
+        if (!sketchPreset) {
+            renderNodeActionButtons(group, node, width);
+        }
 
         const text = document.createElementNS(SVG_NS, "text");
-        const lines = getNodeDisplayLines(node, hasNodeImage(node) ? 18 : 20);
+        const lines = getNodeDisplayLines(node, sketchPreset ? 24 : (hasNodeImage(node) ? 18 : 20));
         const fontSize = Number(node.fontSize) || 18;
         const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
-        const firstLineY = hasNodeImage(node)
+        const firstLineY = hasNodeImage(node) && !sketchPreset
             ? node.y + height - 16 - ((lines.length - 1) * lineHeight)
             : node.y + ((height - ((lines.length - 1) * lineHeight)) / 2);
         text.setAttribute("class", "node-text");
@@ -245,6 +271,20 @@ function render() {
             text.appendChild(tspan);
         });
         group.appendChild(text);
+
+        if (sketchPreset) {
+            const underline = document.createElementNS(SVG_NS, "path");
+            const underlineY = node.y + height - 10;
+            const left = node.x + 10;
+            const right = node.x + width - 10;
+            const mid = (left + right) / 2;
+            underline.setAttribute("d", `M ${left} ${underlineY} Q ${mid} ${underlineY + 8} ${right} ${underlineY}`);
+            underline.setAttribute("stroke", node.branchColor || "#2f855a");
+            underline.setAttribute("stroke-width", depth === 0 ? "3.8" : "2.6");
+            underline.setAttribute("fill", "none");
+            underline.setAttribute("stroke-linecap", "round");
+            group.appendChild(underline);
+        }
 
         group.addEventListener("mousedown", startDrag);
         group.addEventListener("click", () => selectNode(node.id));
@@ -381,6 +421,9 @@ function renderBranchLabel(node, cx, cy, x1, y1, x2, y2) {
     label.setAttribute("y", String(cy - 6));
     label.setAttribute("text-anchor", "middle");
     label.textContent = truncate(branchText, 26);
+    if (isSketchPreset()) {
+        label.classList.add("branch-label-sketch");
+    }
     const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
     label.setAttribute("transform", `rotate(${Math.max(-24, Math.min(24, angle))}, ${cx}, ${cy - 6})`);
     svg.appendChild(label);
@@ -672,6 +715,18 @@ document.getElementById("delete-node-btn").addEventListener("click", async () =>
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
 
+mapStyleInput.addEventListener("change", async () => {
+    state.map.stylePreset = mapStyleInput.value;
+    render();
+    await saveMapStyle(mapStyleInput.value);
+});
+
+autoLayoutBtn.addEventListener("click", async () => {
+    applyOrganicLayout();
+    render();
+    await persistAllNodePositions();
+});
+
 async function createNode(payload) {
     const response = await fetch(`/api/maps/${state.map.id}/nodes`, {
         method: "POST",
@@ -689,6 +744,14 @@ async function saveNode(node) {
         body: JSON.stringify(node)
     });
     autosaveStatus.textContent = "Modifiche salvate.";
+}
+
+async function saveMapStyle(stylePreset) {
+    await fetch(`/api/maps/${state.map.id}/style`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stylePreset })
+    });
 }
 
 function queueAutoSubmitSelectedNode() {
@@ -713,6 +776,74 @@ async function fetchMap() {
 function startImageUploadForNode(nodeId) {
     state.pendingImageNodeId = nodeId;
     imageUploadInput.click();
+}
+
+function buildChildrenMap(nodes) {
+    const children = new Map();
+    for (const node of nodes) {
+        if (node.parentId == null) continue;
+        if (!children.has(node.parentId)) children.set(node.parentId, []);
+        children.get(node.parentId).push(node);
+    }
+    return children;
+}
+
+function getSubtreeWeight(nodeId, childrenMap) {
+    const children = childrenMap.get(nodeId) || [];
+    if (!children.length) return 1;
+    return children.reduce((sum, child) => sum + getSubtreeWeight(child.id, childrenMap), 0);
+}
+
+function applyOrganicLayout() {
+    const nodes = state.map.nodes;
+    if (!nodes.length) return;
+    const roots = nodes.filter(node => node.parentId == null);
+    if (!roots.length) return;
+    const childrenMap = buildChildrenMap(nodes);
+
+    const placeChildren = (node, startAngle, endAngle, depth) => {
+        const children = childrenMap.get(node.id) || [];
+        if (!children.length) return;
+        const totalWeight = children.reduce((sum, child) => sum + getSubtreeWeight(child.id, childrenMap), 0);
+        let cursor = startAngle;
+        const radius = 150 + (depth * 145);
+
+        for (const child of children) {
+            const share = getSubtreeWeight(child.id, childrenMap) / Math.max(totalWeight, 1);
+            const span = (endAngle - startAngle) * share;
+            const angle = cursor + span / 2;
+            const size = isSketchPreset() ? getSketchNodeSize(child) : getNodeSize(child);
+            const jitter = isSketchPreset() ? (Math.sin(child.id * 11.13) * 12) : 0;
+            child.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * radius) + jitter - (size.width / 2));
+            child.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * radius) + jitter - (size.height / 2));
+            placeChildren(child, cursor + 0.06, cursor + span - 0.06, depth + 1);
+            cursor += span;
+        }
+    };
+
+    if (roots.length === 1) {
+        const root = roots[0];
+        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        root.x = Math.round(MAP_CENTER_X - rootSize.width / 2);
+        root.y = Math.round(MAP_CENTER_Y - rootSize.height / 2);
+        placeChildren(root, -Math.PI + 0.2, Math.PI - 0.2, 1);
+        return;
+    }
+
+    const step = (Math.PI * 2) / roots.length;
+    roots.forEach((root, index) => {
+        const angle = (index * step) - Math.PI / 2;
+        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        root.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * 120) - rootSize.width / 2);
+        root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 120) - rootSize.height / 2);
+        placeChildren(root, angle - step / 2, angle + step / 2, 1);
+    });
+}
+
+async function persistAllNodePositions() {
+    for (const node of state.map.nodes) {
+        await saveNode(node);
+    }
 }
 
 async function addChildNode(parentId) {
@@ -815,5 +946,6 @@ function slugify(value) {
         .replace(/(^-|-$)/g, "") || "mappa";
 }
 
+mapStyleInput.value = (state.map.stylePreset || "CLASSIC").toUpperCase();
 selectNode(state.map.nodes[0]?.id ?? null);
 render();

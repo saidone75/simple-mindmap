@@ -28,6 +28,13 @@
 
         <aside class="side-panel">
             <h2>Nodo selezionato</h2>
+            <label for="map-style">Stile rendering mappa</label>
+            <select id="map-style">
+                <option value="CLASSIC">Classico (blocchi)</option>
+                <option value="PLAYFUL">Sketch radiale (a rami)</option>
+            </select>
+            <button type="button" id="auto-layout-btn" class="secondary-btn full-row-btn">Auto-layout dalla struttura</button>
+
             <label for="node-text">Testo</label>
             <textarea id="node-text" rows="4" maxlength="2000" placeholder="Scrivi il testo del nodo..."></textarea>
 

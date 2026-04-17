@@ -149,6 +149,9 @@ input[type="file"] {
 .side-panel { padding: 12px; font-size: 0.92rem; }
 .side-panel h2 { margin-top: 0; margin-bottom: 8px; font-size: 1rem; }
 .side-panel > * + * { margin-top: 8px; }
+.side-panel .full-row-btn {
+    width: 100%;
+}
 .image-preview-box {
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -222,6 +225,24 @@ input[type="file"] {
     font-size: 13px;
     font-weight: 700;
     pointer-events: none;
+}
+.connector-sketch {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.95;
+}
+.sketch-node .node-text {
+    font-family: "Trebuchet MS", "Comic Sans MS", Arial, sans-serif;
+    font-weight: 700;
+    fill: #1f2937;
+}
+.sketch-node.selected .node-text {
+    fill: #0f3ea8;
+}
+.branch-label-sketch {
+    font-family: "Trebuchet MS", "Comic Sans MS", Arial, sans-serif;
+    fill: #2a4f3f;
+    font-size: 12px;
 }
 @media (max-width: 980px) {
     .editor-layout { grid-template-columns: 1fr; }
