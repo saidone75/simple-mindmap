@@ -219,14 +219,14 @@ input[type="file"] {
 .node-text {
     user-select: none;
     pointer-events: all;
-    cursor: text;
+    cursor: inherit;
     font-weight: 700;
     fill: #1f2937;
 }
 .node-emoji {
     font-size: 24px;
     pointer-events: all;
-    cursor: text;
+    cursor: inherit;
 }
 .connector {
     fill: none;
@@ -235,7 +235,22 @@ input[type="file"] {
     opacity: 0.9;
     stroke-linecap: round;
 }
-.node-group { cursor: grab; }
+.node-group,
+.node-group * {
+<<<<<<< ours
+=======
+    cursor: move;
+>>>>>>> theirs
+    cursor: grab;
+}
+.node-group:active,
+.node-group:active * {
+<<<<<<< ours
+=======
+    cursor: move;
+>>>>>>> theirs
+    cursor: grabbing;
+}
 .node-group rect {
     stroke: #475569;
     stroke-width: 2;
