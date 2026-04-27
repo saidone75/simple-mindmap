@@ -43,6 +43,8 @@ const state = {
     resize: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
+    autosaveNodeId: null,
+    autosavePromise: null,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -934,7 +936,38 @@ function queueAutoSubmitSelectedNode() {
 function scheduleAutosave(node) {
     autosaveStatus.textContent = "Modifiche non ancora salvate...";
     clearTimeout(state.autosaveTimer);
-    state.autosaveTimer = setTimeout(() => saveNode(node), 500);
+    state.autosaveNodeId = node.id;
+    state.autosaveTimer = setTimeout(() => {
+        const pendingNode = getNodeById(state.autosaveNodeId);
+        state.autosaveTimer = null;
+        state.autosaveNodeId = null;
+        if (pendingNode) runAutosave(pendingNode);
+    }, 500);
+}
+
+function runAutosave(node) {
+    const promise = saveNode(node).finally(() => {
+        if (state.autosavePromise === promise) {
+            state.autosavePromise = null;
+        }
+    });
+    state.autosavePromise = promise;
+    return promise;
+}
+
+async function flushAutosave() {
+    if (state.autosaveTimer && state.autosaveNodeId != null) {
+        clearTimeout(state.autosaveTimer);
+        const pendingNode = getNodeById(state.autosaveNodeId);
+        state.autosaveTimer = null;
+        state.autosaveNodeId = null;
+        if (pendingNode) {
+            await runAutosave(pendingNode);
+        }
+    }
+    if (state.autosavePromise) {
+        await state.autosavePromise;
+    }
 }
 
 async function fetchMap() {
@@ -1098,6 +1131,7 @@ async function deleteNodeWithChecks(nodeId) {
         return;
     }
     if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
+    await flushAutosave();
     await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
     state.map = await fetchMap();
     state.selectedNodeId = state.map.nodes[0]?.id ?? null;
