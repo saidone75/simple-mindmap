@@ -34,7 +34,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @Service
 public class MindMapService {
     private static final int MIN_IMAGE_SIZE = 24;
-    private static final int MAX_IMAGE_SIZE = 120;
+    private static final int MAX_IMAGE_SIZE = 240;
     private static final int MIN_NODE_WIDTH = 120;
     private static final int MAX_NODE_WIDTH = 720;
     private static final int MIN_NODE_HEIGHT = 60;
