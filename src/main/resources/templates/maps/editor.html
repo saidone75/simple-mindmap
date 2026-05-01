@@ -1,3 +1,21 @@
+<!--
+  ~ Alice's Simple Mind Map
+  ~ Copyright (C) 2026 Miss Alice & Saidone
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+  -->
+
 <!DOCTYPE html>
 <html lang="it" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -22,14 +40,29 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse. Doppio clic sul testo per modificarlo al volo.</div>
-            <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="canvas-hint">Trascina i nodi con il mouse. Clicca direttamente sul testo del nodo o del ramo per modificarlo. Ridimensiona un nodo dal pallino in basso a destra quando è selezionato. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, testo ramo, elimina.</div>
+            <div class="canvas-toolbar">
+                <label for="zoom-control">Zoom</label>
+                <input id="zoom-control" type="range" min="10" max="200" step="5" value="100">
+                <span id="zoom-value">100%</span>
+            </div>
+            <div class="canvas-scroll-area">
+                <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
         </section>
 
         <aside class="side-panel">
             <h2>Nodo selezionato</h2>
+            <button type="button" id="auto-layout-btn" class="secondary-btn full-row-btn">Auto-layout dalla struttura</button>
+
             <label for="node-text">Testo</label>
-            <input id="node-text" type="text" maxlength="100">
+            <textarea id="node-text" rows="4" maxlength="2000" placeholder="Scrivi il testo del nodo..."></textarea>
+
+            <label for="node-emoji">Emoji nodo</label>
+            <input id="node-emoji" type="text" maxlength="4" placeholder="😀">
+
+            <label for="branch-text">Testo ramo</label>
+            <input id="branch-text" type="text" maxlength="120" placeholder="Etichetta del collegamento">
 
             <label for="node-color">Colore</label>
             <select id="node-color">
@@ -41,8 +74,38 @@
                 <option value="#D9D2E9">Lilla</option>
             </select>
 
+            <label for="branch-color">Colore ramo</label>
+            <input id="branch-color" type="color" value="#7c8a9a">
+
+            <label for="branch-style">Stile ramo</label>
+            <select id="branch-style">
+                <option value="SOLID">Continuo</option>
+                <option value="DASHED">Tratteggiato</option>
+                <option value="DOTTED">Puntinato</option>
+                <option value="BOLD">Spesso</option>
+                <option value="DOUBLE">Doppio tratto</option>
+                <option value="ZIGZAG">Zig-zag</option>
+                <option value="ARROW">Con freccia</option>
+                <option value="BOLD_ARROW">Freccia spessa</option>
+            </select>
+
             <label for="node-font-size">Grandezza testo</label>
             <input id="node-font-size" type="range" min="14" max="30" value="18">
+
+            <label for="node-image-url">Immagine (link o caricamento)</label>
+            <input id="node-image-url" type="url" placeholder="https://... oppure data:image/...">
+            <div class="inline-actions">
+                <button type="button" id="apply-image-url-btn" class="secondary-btn small-btn">Usa link</button>
+                <button type="button" id="clear-image-btn" class="secondary-btn small-btn">Rimuovi</button>
+            </div>
+            <input id="node-image-upload" type="file" accept="image/*">
+            <label for="node-image-width">Larghezza immagine: <span id="node-image-width-value">42</span>px</label>
+            <input id="node-image-width" type="range" min="24" max="240" value="42">
+            <label for="node-image-height">Altezza immagine: <span id="node-image-height-value">42</span>px</label>
+            <input id="node-image-height" type="range" min="24" max="240" value="42">
+            <div class="image-preview-box">
+                <img id="node-image-preview" alt="Anteprima immagine nodo" />
+            </div>
 
             <div class="panel-actions">
                 <button type="button" id="save-node-btn">Salva modifiche</button>
@@ -50,7 +113,7 @@
                 <button type="button" id="delete-node-btn" class="danger-btn">Elimina nodo</button>
             </div>
 
-            <div class="autosave-box" id="autosave-status">Modifiche salvate.</div>
+            <div class="autosave-box" id="autosave-status">Modifiche salvate. I cambi ai rami vengono inviati automaticamente.</div>
         </aside>
     </main>
 </div>

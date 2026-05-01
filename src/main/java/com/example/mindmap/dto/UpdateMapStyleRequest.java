@@ -16,14 +16,11 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.repository;
+package com.example.mindmap.dto;
 
-import com.example.mindmap.model.Node;
-import org.springframework.data.jpa.repository.JpaRepository;
+public class UpdateMapStyleRequest {
+    private String stylePreset;
 
-import java.util.List;
-
-public interface NodeRepository extends JpaRepository<Node, Long> {
-    List<Node> findByMapIdOrderByIdAsc(Long mapId);
-    void deleteByMapId(Long mapId);
+    public String getStylePreset() { return stylePreset; }
+    public void setStylePreset(String stylePreset) { this.stylePreset = stylePreset; }
 }
