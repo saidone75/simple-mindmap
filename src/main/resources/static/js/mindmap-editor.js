@@ -286,11 +286,9 @@ function render() {
             }
         }
 
-        if (!sketchPreset) {
+        if (!sketchPreset && node.id === state.selectedNodeId) {
             renderNodeActionButtons(group, node, width);
-            if (node.id === state.selectedNodeId) {
-                renderNodeResizeHandle(group, node, width, height);
-            }
+            renderNodeResizeHandle(group, node, width, height);
         }
 
         const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
