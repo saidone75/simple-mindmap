@@ -466,6 +466,7 @@ function renderNodeActionButtons(group, node, nodeWidth) {
     ];
 
     const spacing = 34;
+    const actionRowY = node.y - 18;
     const startX = node.x + (nodeWidth / 2) - ((actions.length - 1) * spacing / 2);
 
     actions.forEach((action, index) => {
@@ -474,7 +475,7 @@ function renderNodeActionButtons(group, node, nodeWidth) {
         button.setAttribute("class", "node-action-button");
         button.dataset.nodeId = node.id;
         button.dataset.action = action.key;
-        button.setAttribute("transform", `translate(${x}, ${node.y + 14})`);
+        button.setAttribute("transform", `translate(${x}, ${actionRowY})`);
         button.addEventListener("mousedown", event => {
             event.stopPropagation();
             event.preventDefault();
