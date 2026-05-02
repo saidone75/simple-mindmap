@@ -27,8 +27,8 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -153,11 +153,14 @@ public class MindMapService {
         map.setStylePreset(normalizeStylePreset(generatedMap.getStylePreset()));
         MindMap saved = mindMapRepository.save(map);
 
-        AtomicReference<Long> rootId = new AtomicReference<>();
-        generatedMap.getNodes().forEach(nodeDto -> {
-            Long parentId = nodeDto.getParentId();
-            if (parentId != null && rootId.get() != null) {
-                parentId = rootId.get();
+        List<Long> createdNodeIdsByIndex = new ArrayList<>();
+        for (int index = 0; index < generatedMap.getNodes().size(); index++) {
+            NodeDto nodeDto = generatedMap.getNodes().get(index);
+
+            Long parentId = null;
+            Long parentRef = nodeDto.getParentId();
+            if (parentRef != null && parentRef >= 0 && parentRef < createdNodeIdsByIndex.size()) {
+                parentId = createdNodeIdsByIndex.get(parentRef.intValue());
             }
 
             Node node = createNode(
@@ -173,10 +176,8 @@ public class MindMapService {
             node.setImageUri(normalizeImageUri(nodeDto.getImageUri()));
             nodeRepository.save(node);
 
-            if (rootId.get() == null) {
-                rootId.set(node.getId());
-            }
-        });
+            createdNodeIdsByIndex.add(node.getId());
+        }
 
         return saved;
     }

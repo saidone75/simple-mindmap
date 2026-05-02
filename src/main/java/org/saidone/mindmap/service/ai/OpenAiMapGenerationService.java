@@ -65,7 +65,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["text", "emoji", "branchText", "imageUri"],
+                    "required": ["text", "emoji", "branchText", "imageUri", "parentId"],
                     "properties": {
                       "text": { "type": "string" },
                       "emoji": { "type": "string" },
@@ -128,7 +128,8 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
                 - branchText deve essere una breve nota utile.
                 - imageUri deve essere sempre stringa vuota.
-                - parentId deve essere null.
+                - parentId: null solo per il nodo principale (primo elemento).
+                - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
 
                 Testo di riferimento allegato (se presente):
                 %s
