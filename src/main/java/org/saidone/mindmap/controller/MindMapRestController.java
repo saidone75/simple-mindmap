@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.controller;
+package org.saidone.mindmap.controller;
 
-import com.example.mindmap.dto.CreateNodeRequest;
-import com.example.mindmap.dto.MindMapDto;
-import com.example.mindmap.dto.NodeDto;
-import com.example.mindmap.dto.UpdateMapStyleRequest;
-import com.example.mindmap.dto.UpdateNodeRequest;
-import com.example.mindmap.service.MindMapService;
+import org.saidone.mindmap.dto.CreateNodeRequest;
+import org.saidone.mindmap.dto.MindMapDto;
+import org.saidone.mindmap.dto.NodeDto;
+import org.saidone.mindmap.dto.UpdateMapStyleRequest;
+import org.saidone.mindmap.dto.UpdateNodeRequest;
+import org.saidone.mindmap.service.MindMapService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

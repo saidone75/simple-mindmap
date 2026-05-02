@@ -16,14 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.dto;
+package org.saidone.mindmap.service.ai;
 
-import jakarta.validation.constraints.NotBlank;
+import org.saidone.mindmap.dto.MindMapDto;
+import org.saidone.mindmap.dto.MapGenerationRequestDto;
 
-public class CreateMindMapRequest {
-    @NotBlank
-    private String title;
+public interface MapGenerationService {
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    MindMapDto generateMindMap(MapGenerationRequestDto request);
 }

@@ -16,47 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.model;
+package org.saidone.mindmap.dto;
 
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.util.List;
 
-@Entity
-@Table(name = "mind_map")
-public class MindMap {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class MindMapDto {
     private Long id;
-
-    @Column(nullable = false)
     private String title;
-
-    @Column
     private String stylePreset;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        if (stylePreset == null || stylePreset.isBlank()) {
-            stylePreset = "CLASSIC";
-        }
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        if (stylePreset == null || stylePreset.isBlank()) {
-            stylePreset = "CLASSIC";
-        }
-        updatedAt = LocalDateTime.now();
-    }
+    private List<NodeDto> nodes;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -64,8 +32,6 @@ public class MindMap {
     public void setTitle(String title) { this.title = title; }
     public String getStylePreset() { return stylePreset; }
     public void setStylePreset(String stylePreset) { this.stylePreset = stylePreset; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public List<NodeDto> getNodes() { return nodes; }
+    public void setNodes(List<NodeDto> nodes) { this.nodes = nodes; }
 }

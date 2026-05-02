@@ -16,10 +16,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.controller;
+package org.saidone.mindmap.controller;
 
-import com.example.mindmap.dto.CreateMindMapRequest;
-import com.example.mindmap.service.MindMapService;
+import org.saidone.mindmap.dto.CreateMindMapRequest;
+import org.saidone.mindmap.service.MindMapService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
