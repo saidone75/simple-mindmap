@@ -261,6 +261,41 @@ input[type="file"] {
     stroke-width: 2;
     cursor: nwse-resize;
 }
+
+.context-menu-anchor {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+.node-context-menu {
+    display: grid;
+    gap: 6px;
+    min-width: 210px;
+}
+
+.node-context-menu button {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid #d7e3f6;
+    background: #f8fbff;
+    color: #1e293b;
+    font-size: 0.9rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+.node-context-menu button:hover {
+    background: #e8f1ff;
+}
+
+.node-context-menu button.danger {
+    border-color: #f0c1c1;
+    background: #fff5f5;
+    color: #b42318;
+}
 .node-action-button {
     cursor: pointer;
 }

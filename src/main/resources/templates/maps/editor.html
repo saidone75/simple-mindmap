@@ -23,6 +23,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${map.title}">Editor mappa</title>
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <link rel="stylesheet" href="https://unpkg.com/tippy.js@6/dist/tippy.css">
 </head>
 <body>
 <div class="editor-page">
@@ -121,6 +122,8 @@
 <script th:inline="javascript">
     const initialMap = /*[[${map}]]*/ {};
 </script>
+<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="https://unpkg.com/tippy.js@6"></script>
 <script th:src="@{/js/mindmap-editor.js}"></script>
 </body>
 </html>

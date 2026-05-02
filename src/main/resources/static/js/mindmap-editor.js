@@ -45,6 +45,9 @@ const state = {
     autosaveTimer: null,
     autosaveNodeId: null,
     autosavePromise: null,
+    contextMenu: null,
+    hoveredNodeId: null,
+    hoverHideTimer: null,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -286,8 +289,10 @@ function render() {
             }
         }
 
-        if (!sketchPreset && node.id === state.selectedNodeId) {
+        if (!sketchPreset && node.id === state.hoveredNodeId) {
             renderNodeActionButtons(group, node, width);
+        }
+        if (!sketchPreset && node.id === state.selectedNodeId) {
             renderNodeResizeHandle(group, node, width, height);
         }
 
@@ -354,9 +359,90 @@ function render() {
         group.addEventListener("mousedown", startDrag);
         group.addEventListener("click", () => selectNode(node.id));
         group.addEventListener("dblclick", () => quickEdit(node.id));
+        group.addEventListener("mouseenter", () => {
+            if (state.hoverHideTimer) {
+                clearTimeout(state.hoverHideTimer);
+                state.hoverHideTimer = null;
+            }
+            if (state.hoveredNodeId === node.id) return;
+            state.hoveredNodeId = node.id;
+            render();
+        });
+        group.addEventListener("mouseleave", () => {
+            if (state.hoveredNodeId !== node.id) return;
+            if (state.hoverHideTimer) {
+                clearTimeout(state.hoverHideTimer);
+            }
+            state.hoverHideTimer = setTimeout(() => {
+                state.hoveredNodeId = null;
+                state.hoverHideTimer = null;
+                render();
+            }, 1800);
+        });
+        group.addEventListener("contextmenu", event => openContextMenu(event, node.id));
         svg.appendChild(group);
     }
     applyCanvasViewport();
+}
+
+function openContextMenu(event, nodeId) {
+    event.preventDefault();
+    event.stopPropagation();
+    selectNode(nodeId);
+    closeContextMenu();
+    if (typeof window.tippy !== "function") return;
+
+    const anchor = document.createElement("span");
+    anchor.className = "context-menu-anchor";
+    anchor.style.left = `${event.clientX}px`;
+    anchor.style.top = `${event.clientY}px`;
+    document.body.appendChild(anchor);
+
+    const content = document.createElement("div");
+    content.className = "node-context-menu";
+    content.innerHTML = `
+        <button type="button" data-action="add-child">➕ Aggiungi figlio</button>
+        <button type="button" data-action="edit-text">✏️ Modifica testo</button>
+        <button type="button" data-action="edit-branch">🌿 Modifica ramo</button>
+        <button type="button" data-action="upload-image">🖼️ Aggiungi immagine</button>
+        <button type="button" data-action="delete" class="danger">🗑️ Elimina nodo</button>
+    `;
+
+    const instance = window.tippy(anchor, {
+        content,
+        trigger: "manual",
+        interactive: true,
+        placement: "right-start",
+        theme: "light-border",
+        appendTo: () => document.body,
+        hideOnClick: true,
+        onHidden(inst) {
+            inst.destroy();
+            anchor.remove();
+            if (state.contextMenu?.instance === inst) {
+                state.contextMenu = null;
+            }
+        }
+    });
+    instance.show();
+    state.contextMenu = { instance, anchor };
+
+    content.addEventListener("click", async actionEvent => {
+        const action = actionEvent.target?.dataset?.action;
+        if (!action) return;
+        if (action === "add-child") await addChildNode(nodeId);
+        if (action === "edit-text") await quickEdit(nodeId);
+        if (action === "edit-branch") await quickEditBranchText(nodeId);
+        if (action === "upload-image") startImageUploadForNode(nodeId);
+        if (action === "delete") await deleteNodeWithChecks(nodeId);
+        closeContextMenu();
+    });
+}
+
+function closeContextMenu() {
+    const menu = state.contextMenu;
+    if (!menu) return;
+    menu.instance.hide();
 }
 
 function getCanvasBounds() {
@@ -561,11 +647,17 @@ function truncate(text, max) {
 }
 
 function normalizeNodeText(value) {
-    const normalized = (value || "")
+    const normalized = sanitizePlainText((value || "")
         .replace(/\r\n/g, "\n")
         .replace(/\u00a0/g, " ")
-        .trim();
+        .trim());
     return normalized.length ? normalized : "Nodo";
+}
+
+function sanitizePlainText(value) {
+    return (value || "")
+        .replace(/[<>]/g, "")
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "");
 }
 
 function getNodeDisplayLines(node, maxLineLength) {
@@ -701,6 +793,11 @@ document.addEventListener("mouseup", () => {
     state.resize = null;
 });
 
+document.addEventListener("click", event => {
+    if (event.target.closest(".node-context-menu")) return;
+    closeContextMenu();
+});
+
 document.getElementById("save-node-btn").addEventListener("click", async () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -817,7 +914,17 @@ function applyFormToNode(node) {
 
 function normalizeImageUri(value) {
     const trimmed = (value || "").trim();
-    return trimmed.length ? trimmed : null;
+    if (!trimmed.length) return null;
+    if (trimmed.startsWith("data:image/")) return trimmed;
+    try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+            return parsed.toString();
+        }
+    } catch (error) {
+        return null;
+    }
+    return null;
 }
 
 function clampImageSize(value) {
@@ -1149,7 +1256,7 @@ async function quickEditBranchText(nodeId) {
     if (!node) return;
     const value = window.prompt("Inserisci il testo del ramo:", node.branchText || "");
     if (value === null) return;
-    node.branchText = value.trim();
+    node.branchText = sanitizePlainText(value.trim());
     selectNode(nodeId);
     render();
     await saveNode(node);
@@ -1200,6 +1307,36 @@ function slugify(value) {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "") || "mappa";
 }
+
+function isTypingTarget(target) {
+    if (!target) return false;
+    const tag = target.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea" || target.isContentEditable;
+}
+
+document.addEventListener("keydown", async event => {
+    if (isTypingTarget(event.target)) return;
+    if (!state.selectedNodeId) return;
+    const node = getNodeById(state.selectedNodeId);
+    if (!node) return;
+
+    if (event.key === "Tab" && !event.shiftKey) {
+        event.preventDefault();
+        await addChildNode(node.id);
+        return;
+    }
+
+    if ((event.key === "Delete" || event.key === "Backspace") && !event.metaKey && !event.ctrlKey) {
+        event.preventDefault();
+        await deleteNodeWithChecks(node.id);
+        return;
+    }
+
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        await quickEdit(node.id);
+    }
+});
 
 state.map.stylePreset = "CLASSIC";
 selectNode(state.map.nodes[0]?.id ?? null);
