@@ -124,18 +124,26 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 Vincoli:
                 - Argomento: %s
                 - Numero nodi contenuto (escluso nodo principale): %d
+                - Profondità massima della mappa (livelli gerarchici): %d
                 - Il primo nodo rappresenta il tema centrale.
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
                 - branchText deve essere una breve nota utile.
                 - imageUri deve essere sempre stringa vuota.
                 - parentId: null solo per il nodo principale (primo elemento).
                 - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
+                - Struttura gerarchica obbligatoria: radice -> figli -> nipoti -> livelli successivi.
+                - Albero n-ario: sia la radice sia ogni figlio possono avere più figli (0..n).
+                - Evita collegamenti incrociati o riassegnazioni ambigue: ogni nodo deve avere un solo parentId.
+                - Ordina i nodi per livelli (prima i figli della radice, poi i figli dei figli, ecc.).
+                - Non superare la profondità massima richiesta: massimo %d livelli dal nodo radice.
 
                 Testo di riferimento allegato (se presente):
                 %s
                 """.formatted(
                 request.getTopic(),
                 request.getNumberOfNodes(),
+                request.getMaxDepth() == null ? 3 : request.getMaxDepth(),
+                request.getMaxDepth() == null ? 3 : request.getMaxDepth(),
                 StringUtils.hasText(request.getReferenceText()) ? request.getReferenceText() : "N/A"
         );
 

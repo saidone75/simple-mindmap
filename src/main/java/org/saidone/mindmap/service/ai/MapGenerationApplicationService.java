@@ -28,6 +28,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -55,6 +58,7 @@ public class MapGenerationApplicationService {
             try {
                 val generated = mapGenerationService.generateMindMap(request);
                 sanitize(generated);
+                enforceDepth(generated, request.getMaxDepth());
                 return generated;
             } catch (RuntimeException ex) {
                 lastError = ex;
@@ -77,6 +81,10 @@ public class MapGenerationApplicationService {
         request.setTopic(request.getTopic().trim());
 
         int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
+        if (request.getMaxDepth() == null) {
+            request.setMaxDepth(3);
+        }
+        request.setMaxDepth(Math.max(2, Math.min(request.getMaxDepth(), 6)));
         if (request.getNumberOfNodes() > effectiveMaxNodes) {
             throw new IllegalStateException(String.format("Numero massimo nodi superato. Limite: %d", effectiveMaxNodes));
         }
@@ -109,6 +117,61 @@ public class MapGenerationApplicationService {
         }
     }
 
+
+    private void enforceDepth(MindMapDto generated, Integer requestedMaxDepth) {
+        int targetDepth = requestedMaxDepth == null ? 3 : requestedMaxDepth;
+        targetDepth = Math.max(2, Math.min(targetDepth, 6));
+
+        int nodeCount = generated.getNodes().size();
+        if (nodeCount <= 1) {
+            return;
+        }
+
+        generated.getNodes().get(0).setParentId(null);
+
+        int effectiveDepth = Math.min(targetDepth, nodeCount - 1);
+        List<List<Integer>> nodesByLevel = new ArrayList<>();
+        for (int level = 0; level <= effectiveDepth; level++) {
+            nodesByLevel.add(new ArrayList<>());
+        }
+        nodesByLevel.get(0).add(0);
+
+        int[] depthByIndex = new int[nodeCount];
+
+        // Guarantee at least one branch that reaches the target depth.
+        int nextIndex = 1;
+        int previous = 0;
+        for (int level = 1; level <= effectiveDepth && nextIndex < nodeCount; level++) {
+            generated.getNodes().get(nextIndex).setParentId((long) previous);
+            depthByIndex[nextIndex] = level;
+            nodesByLevel.get(level).add(nextIndex);
+            previous = nextIndex;
+            nextIndex++;
+        }
+
+        // Distribute remaining nodes level-by-level to keep a clean tree and avoid odd intersections.
+        while (nextIndex < nodeCount) {
+            boolean placedInThisPass = false;
+            for (int level = 1; level <= effectiveDepth && nextIndex < nodeCount; level++) {
+                List<Integer> parentCandidates = nodesByLevel.get(level - 1);
+                if (parentCandidates.isEmpty()) {
+                    continue;
+                }
+                int parentIdx = parentCandidates.get(nodesByLevel.get(level).size() % parentCandidates.size());
+                generated.getNodes().get(nextIndex).setParentId((long) parentIdx);
+                depthByIndex[nextIndex] = level;
+                nodesByLevel.get(level).add(nextIndex);
+                nextIndex++;
+                placedInThisPass = true;
+            }
+            if (!placedInThisPass) {
+                generated.getNodes().get(nextIndex).setParentId(0L);
+                depthByIndex[nextIndex] = 1;
+                nodesByLevel.get(1).add(nextIndex);
+                nextIndex++;
+            }
+        }
+    }
     private boolean hasValidNode(NodeDto node) {
         return node != null && StringUtils.hasText(node.getText());
     }

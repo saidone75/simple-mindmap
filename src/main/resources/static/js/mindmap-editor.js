@@ -69,6 +69,7 @@ const branchTextInput = document.getElementById("branch-text");
 const autoLayoutBtn = document.getElementById("auto-layout-btn");
 const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
+const canvasPanel = svg.closest(".canvas-panel");
 
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
@@ -446,17 +447,23 @@ function closeContextMenu() {
 }
 
 function getCanvasBounds() {
+    let minX = 0;
+    let minY = 0;
     let maxX = BASE_CANVAS_WIDTH - CANVAS_PADDING;
     let maxY = BASE_CANVAS_HEIGHT - CANVAS_PADDING;
     for (const node of state.map.nodes) {
         const nodeSize = isSketchPreset() ? getSketchNodeSize(node) : getNodeSize(node);
+        minX = Math.min(minX, node.x);
+        minY = Math.min(minY, node.y);
         maxX = Math.max(maxX, node.x + nodeSize.width);
         maxY = Math.max(maxY, node.y + nodeSize.height);
     }
-    return {
-        width: Math.max(BASE_CANVAS_WIDTH, Math.ceil(maxX + CANVAS_PADDING)),
-        height: Math.max(BASE_CANVAS_HEIGHT, Math.ceil(maxY + CANVAS_PADDING))
-    };
+    const viewportX = Math.floor(minX - CANVAS_PADDING);
+    const viewportY = Math.floor(minY - CANVAS_PADDING);
+    const width = Math.max(BASE_CANVAS_WIDTH, Math.ceil(maxX - minX + (CANVAS_PADDING * 2)));
+    const height = Math.max(BASE_CANVAS_HEIGHT, Math.ceil(maxY - minY + (CANVAS_PADDING * 2)));
+
+    return { x: viewportX, y: viewportY, width, height };
 }
 
 function applyCanvasViewport() {
@@ -466,14 +473,28 @@ function applyCanvasViewport() {
         zoomInput.value = String(clampedZoomPercent);
     }
     const zoomFactor = clampedZoomPercent / 100;
-    const { width, height } = getCanvasBounds();
+    const { x, y, width, height } = getCanvasBounds();
 
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
     svg.setAttribute("width", String(Math.round(width * zoomFactor)));
     svg.setAttribute("height", String(Math.round(height * zoomFactor)));
     if (zoomValue) {
         zoomValue.textContent = `${clampedZoomPercent}%`;
     }
+}
+
+
+function focusCanvasOnContent() {
+    if (!canvasPanel) return;
+    const zoomPercent = Number(zoomInput?.value) || 100;
+    const zoomFactor = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, zoomPercent)) / 100;
+    const { x, y, width, height } = getCanvasBounds();
+
+    const centerX = (x + width / 2) * zoomFactor;
+    const centerY = (y + height / 2) * zoomFactor;
+
+    canvasPanel.scrollLeft = Math.max(0, Math.round(centerX - (canvasPanel.clientWidth / 2)));
+    canvasPanel.scrollTop = Math.max(0, Math.round(centerY - (canvasPanel.clientHeight / 2)));
 }
 
 function renderNodeImage(group, node, width) {
@@ -1009,6 +1030,7 @@ if (zoomInput) {
 autoLayoutBtn.addEventListener("click", async () => {
     applyOrganicLayout();
     render();
+    focusCanvasOnContent();
     await persistAllNodePositions();
 });
 
