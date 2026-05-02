@@ -1,0 +1,295 @@
+/*
+ * Alice's Simple Quiz Maker - fun quizzes for curious minds
+ * Copyright (C) 2026 Miss Alice & Saidone
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.saidone.mindmap.service.ai;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.apache.logging.log4j.util.Strings;
+import org.saidone.quizmaker.dto.QuestionDto;
+import org.saidone.quizmaker.dto.QuizDto;
+import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
+import org.saidone.quizmaker.service.WikimediaImageSearchService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+
+import java.util.*;
+import java.util.concurrent.*;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class OpenAiQuizGenerationService implements QuizGenerationService {
+    private static final int MAX_WIKIMEDIA_SEARCH_THREADS = 3;
+    private static final ExecutorService WIKIMEDIA_SEARCH_EXECUTOR = Executors.newFixedThreadPool(MAX_WIKIMEDIA_SEARCH_THREADS);
+
+    private final ObjectMapper objectMapper;
+    private final RestClient openAiRestClient;
+    private final WikimediaImageSearchService wikimediaImageSearchService;
+
+    @Value("${app.openai.api-key:}")
+    private String apiKey;
+
+    @Value("${app.openai.model:gpt-5.4-mini}")
+    private String model;
+
+    private Map<String, Object> cachedQuizSchema;
+
+    private static final String QUIZ_JSON_SCHEMA_TEMPLATE = """
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["title", "emoji", "questions"],
+              "properties": {
+                "title": { "type": "string" },
+                "emoji": { "type": "string" },
+                "questions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["text", "emoji", "imageKeywords", "imageUrl", "options", "answer", "feedback"],
+                    "properties": {
+                      "text": { "type": "string" },
+                      "emoji": { "type": "string" },
+                      "imageKeywords": { "type": "string" },
+                      "imageUrl": { "type": "string" },
+                      "options": {
+                        "type": "array",
+                        "minItems": 4,
+                        "maxItems": 4,
+                        "items": { "type": "string" }
+                      },
+                      "answer": { "type": "integer", "minimum": 0, "maximum": 3 },
+                      "feedback": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+    @PostConstruct
+    void initSchema() {
+        try {
+            objectMapper.readTree(QUIZ_JSON_SCHEMA_TEMPLATE);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Schema JSON di OpenAI non valido.", e);
+        }
+    }
+
+    @Override
+    public QuizDto.Request generateQuiz(QuizGenerationRequestDto request, String attachmentText) {
+        if (!StringUtils.hasText(apiKey)) {
+            throw new IllegalStateException("Chiave API di OpenAI non configurata. Imposta app.openai.api-key.");
+        }
+
+        val payload = buildPayload(request, attachmentText);
+        val responseBody = openAiRestClient.post()
+                .uri("/chat/completions")
+                .header(HttpHeaders.AUTHORIZATION, String.format("Bearer %s", apiKey))
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(payload)
+                .retrieve()
+                .body(String.class);
+
+        try {
+            val root = objectMapper.readTree(responseBody);
+            val rawJson = root.path("choices").path(0).path("message").path("content").asText();
+            val generatedQuiz = objectMapper.readValue(rawJson, QuizDto.Request.class);
+            checkGeneratedImageUrls(
+                    generatedQuiz,
+                    Boolean.TRUE.equals(request.getIncludeAiImages()),
+                    request.getImageSearchMode()
+            );
+            randomizeAnswerPositions(generatedQuiz);
+            return generatedQuiz;
+        } catch (Exception e) {
+            log.error("Risposta OpenAI non valida: {}", responseBody, e);
+            throw new IllegalStateException("La risposta di OpenAI non è valida o è incompleta.");
+        }
+    }
+
+    void checkGeneratedImageUrls(QuizDto.Request quiz, boolean includeAiImages, String imageSearchMode) {
+        if (quiz == null || quiz.getQuestions() == null) {
+            return;
+        }
+        try {
+            val tasks = new ArrayList<Future<?>>();
+            for (val question : quiz.getQuestions()) {
+                tasks.add(WIKIMEDIA_SEARCH_EXECUTOR.submit(() -> processQuestionImage(question, includeAiImages, imageSearchMode)));
+            }
+            for (val task : tasks) {
+                task.get();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Risoluzione immagini Wikimedia interrotta: {}", e.getMessage());
+        } catch (ExecutionException e) {
+            log.warn("Errore durante la risoluzione immagini Wikimedia: {}", e.getMessage());
+        }
+    }
+
+    @PreDestroy
+    void shutdownWikimediaSearchExecutor() {
+        WIKIMEDIA_SEARCH_EXECUTOR.shutdown();
+    }
+
+    private void processQuestionImage(QuestionDto question,
+                                      boolean includeAiImages,
+                                      String imageSearchMode) {
+        if (question == null) {
+            return;
+        }
+        if (!includeAiImages) {
+            question.setImageKeywords(Strings.EMPTY);
+            question.setImageUrl(Strings.EMPTY);
+            return;
+        }
+
+        var resolvedUrl = Strings.EMPTY;
+        if (StringUtils.hasText(question.getImageKeywords())) {
+            val keywords = parseImageKeywords(question.getImageKeywords());
+            if (keywords.length > 0) {
+                question.setImageKeywords(String.join(", ", keywords));
+                resolvedUrl = wikimediaImageSearchService.searchImage(keywords, imageSearchMode);
+            }
+        }
+        question.setImageUrl(StringUtils.hasText(resolvedUrl) ? resolvedUrl : Strings.EMPTY);
+    }
+
+    private String[] parseImageKeywords(String imageKeywords) {
+        if (!StringUtils.hasText(imageKeywords)) {
+            return new String[0];
+        }
+
+        return Arrays.stream(imageKeywords.trim().split("\\s*[,;\\n]+\\s*"))
+                .map(s -> s.replaceFirst("^\\d+[\\)\\.\\-:]\\s*", ""))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toArray(String[]::new);
+    }
+
+    void randomizeAnswerPositions(QuizDto.Request quiz) {
+        randomizeAnswerPositions(quiz, ThreadLocalRandom.current());
+    }
+
+    void randomizeAnswerPositions(QuizDto.Request quiz, Random random) {
+        if (quiz == null || quiz.getQuestions() == null) {
+            return;
+        }
+
+        for (val question : quiz.getQuestions()) {
+            if (question == null || question.getOptions() == null || question.getOptions().size() != 4) {
+                continue;
+            }
+            if (question.getAnswer() == null || question.getAnswer() < 0 || question.getAnswer() >= question.getOptions().size()) {
+                continue;
+            }
+
+            val options = question.getOptions();
+            val correctOption = options.get(question.getAnswer());
+
+            Collections.shuffle(options, random);
+            question.setAnswer(options.indexOf(correctOption));
+        }
+    }
+
+    private Map<String, Object> buildPayload(QuizGenerationRequestDto request, String attachmentText) {
+        val userPrompt = """
+                Crea un quiz in italiano e rispondi SOLO con JSON valido compatibile con QuizDto.Request.
+                Campi obbligatori: title (string), emoji (string), questions (array).
+                Ogni question deve avere: text, emoji, imageKeywords, imageUrl, options (4 risposte), answer (indice corretto 0-3), feedback.
+                imageKeywords deve contenere 2-6 keyword in inglese, separate da virgola, in ordine di importanza (la più importante per prima), pensate per cercare immagini su Wikimedia Commons.
+                imageUrl deve essere sempre stringa vuota: verrà valorizzato dal backend.
+                
+                Vincoli:
+                - Argomento: %s
+                - Numero domande: %d
+                - Difficoltà: %s
+                - Tono: %s
+                - Evita domande duplicate.
+                - Le risposte devono essere chiare e plausibili.
+                - answer deve sempre puntare a un indice valido
+                - feedback deve contenere una curiosità sulla risposta corretta
+                - %s
+                
+                Testo di riferimento allegato (se presente):
+                %s
+                """.formatted(
+                request.getTopic(),
+                request.getNumberOfQuestions(),
+                request.getDifficulty(),
+                request.getTone(),
+                Boolean.TRUE.equals(request.getIncludeAiImages())
+                        ? "Per ogni domanda imposta imageKeywords in inglese, evitando URL e frasi lunghe. Imposta sempre imageUrl a stringa vuota."
+                        : "Imposta imageKeywords sempre come stringa vuota e imageUrl sempre come stringa vuota.",
+                StringUtils.hasText(attachmentText) ? attachmentText : "N/A"
+        );
+
+        val payload = new HashMap<String, Object>();
+        payload.put("model", model);
+        payload.put("response_format", responseFormat());
+        payload.put("messages", List.of(
+                Map.of("role", "system", "content", "Sei un assistente che crea quiz didattici accurati in italiano."),
+                Map.of("role", "user", "content", userPrompt)
+        ));
+        payload.put("temperature", 0.7);
+        return payload;
+    }
+
+    private Map<String, Object> responseFormat() {
+        return Map.of(
+                "type", "json_schema",
+                "json_schema", Map.of(
+                        "name", "quiz_dto_request",
+                        "strict", true,
+                        "schema", parseQuizSchema()
+                )
+        );
+    }
+
+    private Map<String, Object> parseQuizSchema() {
+        if (cachedQuizSchema != null) {
+            return cachedQuizSchema;
+        }
+        try {
+            val schema = objectMapper.readValue(QUIZ_JSON_SCHEMA_TEMPLATE, new TypeReference<Map<String, Object>>() {
+            });
+            if (!"object".equals(schema.get("type"))) {
+                throw new IllegalStateException("Schema OpenAI non valido: type deve essere 'object'.");
+            }
+            cachedQuizSchema = schema;
+            return cachedQuizSchema;
+        } catch (Exception e) {
+            throw new IllegalStateException("Schema JSON di OpenAI non valido.", e);
+        }
+    }
+}
