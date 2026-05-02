@@ -18,7 +18,6 @@
 
 package org.saidone.mindmap.service;
 
-import com.example.mindmap.dto.*;
 import org.saidone.mindmap.dto.*;
 import org.saidone.mindmap.model.MindMap;
 import org.saidone.mindmap.model.Node;
