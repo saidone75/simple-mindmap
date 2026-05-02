@@ -16,9 +16,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.repository;
+package org.saidone.mindmap.repository;
 
-import com.example.mindmap.model.MindMap;
+import org.saidone.mindmap.model.MindMap;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MindMapRepository extends JpaRepository<MindMap, Long> {

@@ -16,13 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.service;
+package org.saidone.mindmap.service;
 
 import com.example.mindmap.dto.*;
-import com.example.mindmap.model.MindMap;
-import com.example.mindmap.model.Node;
-import com.example.mindmap.repository.MindMapRepository;
-import com.example.mindmap.repository.NodeRepository;
+import org.saidone.mindmap.dto.*;
+import org.saidone.mindmap.model.MindMap;
+import org.saidone.mindmap.model.Node;
+import org.saidone.mindmap.repository.MindMapRepository;
+import org.saidone.mindmap.repository.NodeRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;

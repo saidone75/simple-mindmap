@@ -16,26 +16,67 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.dto;
+package org.saidone.mindmap.model;
 
-public class CreateNodeRequest {
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "node")
+public class Node {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private Long mapId;
+
     private Long parentId;
+
+    @Column(nullable = false)
     private String text;
+
     private String emoji;
+
     private String branchText;
+
+    @Column(nullable = false)
     private Integer x;
+
+    @Column(nullable = false)
     private Integer y;
+
+    @Column(nullable = false)
     private String color;
+
+    @Column(nullable = false)
     private Integer fontSize;
+
+    @Column(nullable = false)
     private String shape;
+
+    @Column(nullable = false)
     private String branchColor;
+
+    @Column(nullable = false)
     private String branchStyle;
+
+    @Lob
+    @Column(columnDefinition = "CLOB")
     private String imageUri;
+
     private Integer imageWidth;
+
     private Integer imageHeight;
+
     private Integer nodeWidth;
+
     private Integer nodeHeight;
 
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getMapId() { return mapId; }
+    public void setMapId(Long mapId) { this.mapId = mapId; }
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getText() { return text; }

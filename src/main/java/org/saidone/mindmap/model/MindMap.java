@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap.model;
+package org.saidone.mindmap.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;

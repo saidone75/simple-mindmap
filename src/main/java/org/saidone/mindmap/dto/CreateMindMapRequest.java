@@ -16,14 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.example.mindmap;
+package org.saidone.mindmap.dto;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import jakarta.validation.constraints.NotBlank;
 
-@SpringBootApplication
-public class MindmapApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(MindmapApplication.class, args);
-    }
+public class CreateMindMapRequest {
+    @NotBlank
+    private String title;
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 }
