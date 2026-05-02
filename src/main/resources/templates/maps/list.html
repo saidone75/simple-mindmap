@@ -43,6 +43,7 @@
                 <button type="submit">Crea mappa con AI</button>
             </div>
         </form>
+        <div class="field-error" th:if="${aiError}" th:text="${aiError}"></div>
     </section>
 
     <section class="section-card">
