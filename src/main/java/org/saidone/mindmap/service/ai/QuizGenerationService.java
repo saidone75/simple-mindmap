@@ -18,10 +18,10 @@
 
 package org.saidone.mindmap.service.ai;
 
-import org.saidone.quizmaker.dto.QuizDto;
+import org.saidone.mindmap.dto.MindMapDto;
 import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
 
 public interface QuizGenerationService {
 
-    QuizDto.Request generateQuiz(QuizGenerationRequestDto request, String attachmentText);
+    MindMapDto generateMindMap(QuizGenerationRequestDto request, String attachmentText);
 }

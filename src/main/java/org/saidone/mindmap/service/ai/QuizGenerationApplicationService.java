@@ -21,8 +21,8 @@ package org.saidone.mindmap.service.ai;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.saidone.quizmaker.dto.QuestionDto;
-import org.saidone.quizmaker.dto.QuizDto;
+import org.saidone.mindmap.dto.MindMapDto;
+import org.saidone.mindmap.dto.NodeDto;
 import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -44,7 +44,7 @@ public class QuizGenerationApplicationService {
     @Value("${app.ai.generation.max-attempts:2}")
     private int maxAttempts;
 
-    public QuizDto.Request generateQuiz(QuizGenerationRequestDto request, String attachmentText) {
+    public MindMapDto generateMindMap(QuizGenerationRequestDto request, String attachmentText) {
         validateRequestLimits(request);
 
         val safeAttachmentText = truncateAttachmentText(attachmentText);
@@ -53,15 +53,15 @@ public class QuizGenerationApplicationService {
         RuntimeException lastError = null;
         for (int i = 1; i <= attempts; i++) {
             try {
-                val generated = quizGenerationService.generateQuiz(request, safeAttachmentText);
-                sanitize(generated, request.getNumberOfQuestions());
+                val generated = quizGenerationService.generateMindMap(request, safeAttachmentText);
+                sanitize(generated);
                 return generated;
             } catch (RuntimeException ex) {
                 lastError = ex;
-                log.warn("Tentativo generazione quiz {} di {} fallito", i, attempts, ex);
+                log.warn("Tentativo generazione mindmap {} di {} fallito", i, attempts, ex);
             }
         }
-        throw new IllegalStateException("Impossibile generare il quiz con l'AI al momento.", lastError);
+        throw new IllegalStateException("Impossibile generare la mindmap con l'AI al momento.", lastError);
     }
 
     private void validateRequestLimits(QuizGenerationRequestDto request) {
@@ -83,38 +83,25 @@ public class QuizGenerationApplicationService {
         return attachmentText.substring(0, Math.min(effectiveMaxAttachmentChars, attachmentText.length()));
     }
 
-    private void sanitize(QuizDto.Request generated, int maxQuestions) {
-        if (generated == null || generated.getQuestions() == null || generated.getQuestions().isEmpty()) {
-            throw new IllegalStateException("L'IA non ha generato domande valide.");
+    private void sanitize(MindMapDto generated) {
+        if (generated == null || generated.getNodes() == null || generated.getNodes().isEmpty()) {
+            throw new IllegalStateException("L'IA non ha generato una mindmap valida.");
         }
         if (!StringUtils.hasText(generated.getTitle())) {
-            generated.setTitle("Quiz generato dall'IA");
-        }
-        if (!StringUtils.hasText(generated.getEmoji())) {
-            generated.setEmoji("🤖");
+            generated.setTitle("Mindmap generata dall'IA");
         }
 
-        generated.setQuestions(generated.getQuestions().stream()
-                .filter(this::hasValidQuestion)
-                .limit(maxQuestions)
+        generated.setNodes(generated.getNodes().stream()
+                .filter(this::hasValidNode)
                 .toList());
 
-        if (generated.getQuestions().isEmpty()) {
-            throw new IllegalStateException("L'IA non ha generato domande utilizzabili.");
+        if (generated.getNodes().isEmpty()) {
+            throw new IllegalStateException("L'IA non ha generato nodi utilizzabili.");
         }
     }
 
-    private boolean hasValidQuestion(QuestionDto question) {
-        return question != null
-                && StringUtils.hasText(question.getText())
-                && StringUtils.hasText(question.getEmoji())
-                && StringUtils.hasText(question.getFeedback())
-                && question.getOptions() != null
-                && question.getOptions().size() == 4
-                && question.getOptions().stream().allMatch(StringUtils::hasText)
-                && question.getAnswer() != null
-                && question.getAnswer() >= 0
-                && question.getAnswer() < 4;
+    private boolean hasValidNode(NodeDto node) {
+        return node != null && StringUtils.hasText(node.getText());
     }
 
 }
