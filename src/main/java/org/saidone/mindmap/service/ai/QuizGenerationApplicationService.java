@@ -1,5 +1,5 @@
 /*
- * Alice's Simple Quiz Maker - fun quizzes for curious minds
+ * Alice's Simple Mind Map
  * Copyright (C) 2026 Miss Alice & Saidone
  *
  * This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class QuizGenerationApplicationService {
 
-    private final QuizGenerationService quizGenerationService;
+    private final MapGenerationService mapGenerationService;
 
     @Value("${app.ai.generation.max-questions:20}")
     private int maxQuestionsPerRequest;
@@ -53,7 +53,7 @@ public class QuizGenerationApplicationService {
         RuntimeException lastError = null;
         for (int i = 1; i <= attempts; i++) {
             try {
-                val generated = quizGenerationService.generateMindMap(request, safeAttachmentText);
+                val generated = mapGenerationService.generateMindMap(request, safeAttachmentText);
                 sanitize(generated);
                 return generated;
             } catch (RuntimeException ex) {

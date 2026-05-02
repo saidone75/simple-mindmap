@@ -1,5 +1,5 @@
 /*
- * Alice's Simple Quiz Maker - fun quizzes for curious minds
+ * Alice's Simple Mind Map
  * Copyright (C) 2026 Miss Alice & Saidone
  *
  * This program is free software: you can redistribute it and/or modify
@@ -39,7 +39,7 @@ import java.util.*;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class OpenAiQuizGenerationService implements QuizGenerationService {
+public class OpenAiMapGenerationService implements MapGenerationService {
     private final ObjectMapper objectMapper;
     private final RestClient openAiRestClient;
 

@@ -1,5 +1,5 @@
 /*
- * Alice's Simple Quiz Maker - fun quizzes for curious minds
+ * Alice's Simple Mind Map
  * Copyright (C) 2026 Miss Alice & Saidone
  *
  * This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ package org.saidone.mindmap.service.ai;
 import org.saidone.mindmap.dto.MindMapDto;
 import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
 
-public interface QuizGenerationService {
+public interface MapGenerationService {
 
     MindMapDto generateMindMap(QuizGenerationRequestDto request, String attachmentText);
 }
