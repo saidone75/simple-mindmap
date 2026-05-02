@@ -129,48 +129,65 @@ public class MapGenerationApplicationService {
 
         generated.getNodes().get(0).setParentId(null);
 
-        int effectiveDepth = Math.min(targetDepth, nodeCount - 1);
-        List<List<Integer>> nodesByLevel = new ArrayList<>();
-        for (int level = 0; level <= effectiveDepth; level++) {
-            nodesByLevel.add(new ArrayList<>());
-        }
-        nodesByLevel.get(0).add(0);
+        for (int i = 1; i < nodeCount; i++) {
+            NodeDto node = generated.getNodes().get(i);
+            Long rawParentId = node.getParentId();
 
-        int[] depthByIndex = new int[nodeCount];
-
-        // Guarantee at least one branch that reaches the target depth.
-        int nextIndex = 1;
-        int previous = 0;
-        for (int level = 1; level <= effectiveDepth && nextIndex < nodeCount; level++) {
-            generated.getNodes().get(nextIndex).setParentId((long) previous);
-            depthByIndex[nextIndex] = level;
-            nodesByLevel.get(level).add(nextIndex);
-            previous = nextIndex;
-            nextIndex++;
-        }
-
-        // Distribute remaining nodes level-by-level to keep a clean tree and avoid odd intersections.
-        while (nextIndex < nodeCount) {
-            boolean placedInThisPass = false;
-            for (int level = 1; level <= effectiveDepth && nextIndex < nodeCount; level++) {
-                List<Integer> parentCandidates = nodesByLevel.get(level - 1);
-                if (parentCandidates.isEmpty()) {
-                    continue;
-                }
-                int parentIdx = parentCandidates.get(nodesByLevel.get(level).size() % parentCandidates.size());
-                generated.getNodes().get(nextIndex).setParentId((long) parentIdx);
-                depthByIndex[nextIndex] = level;
-                nodesByLevel.get(level).add(nextIndex);
-                nextIndex++;
-                placedInThisPass = true;
+            int parentIndex = rawParentId == null ? 0 : rawParentId.intValue();
+            if (parentIndex < 0 || parentIndex >= i) {
+                parentIndex = 0;
+                node.setParentId(0L);
             }
-            if (!placedInThisPass) {
-                generated.getNodes().get(nextIndex).setParentId(0L);
-                depthByIndex[nextIndex] = 1;
-                nodesByLevel.get(1).add(nextIndex);
-                nextIndex++;
+
+            int depth = computeDepth(generated.getNodes(), i, targetDepth);
+            if (depth > targetDepth) {
+                int safeParent = findAncestorWithinDepth(generated.getNodes(), parentIndex, targetDepth - 1);
+                node.setParentId((long) safeParent);
             }
         }
+    }
+
+    private int computeDepth(List<NodeDto> nodes, int nodeIndex, int maxDepthGuard) {
+        int depth = 0;
+        int current = nodeIndex;
+        int guard = 0;
+        while (current > 0 && guard <= nodes.size()) {
+            Long parentId = nodes.get(current).getParentId();
+            if (parentId == null) {
+                break;
+            }
+            int parentIndex = parentId.intValue();
+            if (parentIndex < 0 || parentIndex >= current) {
+                return maxDepthGuard + 1;
+            }
+            depth++;
+            current = parentIndex;
+            if (depth > maxDepthGuard) {
+                return depth;
+            }
+            guard++;
+        }
+        return depth;
+    }
+
+    private int findAncestorWithinDepth(List<NodeDto> nodes, int parentIndex, int maxAllowedDepth) {
+        int current = parentIndex;
+        int currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+        int guard = 0;
+        while (currentDepth > maxAllowedDepth && current > 0 && guard <= nodes.size()) {
+            Long nextParent = nodes.get(current).getParentId();
+            if (nextParent == null) {
+                return 0;
+            }
+            int nextIndex = nextParent.intValue();
+            if (nextIndex < 0 || nextIndex >= current) {
+                return 0;
+            }
+            current = nextIndex;
+            currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+            guard++;
+        }
+        return currentDepth <= maxAllowedDepth ? current : 0;
     }
     private boolean hasValidNode(NodeDto node) {
         return node != null && StringUtils.hasText(node.getText());

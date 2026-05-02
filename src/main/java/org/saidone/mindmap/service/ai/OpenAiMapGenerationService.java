@@ -135,6 +135,10 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - Albero n-ario: sia la radice sia ogni figlio possono avere più figli (0..n).
                 - Evita collegamenti incrociati o riassegnazioni ambigue: ogni nodo deve avere un solo parentId.
                 - Ordina i nodi per livelli (prima i figli della radice, poi i figli dei figli, ecc.).
+                - I collegamenti devono rispettare una relazione "è un tipo/sottoinsieme di" oppure "è una parte di" coerente semanticamente.
+                - Vietato creare catene tassonomiche errate (esempio: "Uccelli" figlio di "Mammiferi" è sempre sbagliato).
+                - Le grandi categorie parallele (es. Mammiferi, Uccelli, Rettili, Pesci, Insetti) devono essere sorelle con lo stesso parentId, non una figlia dell'altra.
+                - Prima di rispondere, fai un controllo di coerenza semantica di tutti gli archi padre->figlio e correggi eventuali errori.
                 - Non superare la profondità massima richiesta: massimo %d livelli dal nodo radice.
 
                 Testo di riferimento allegato (se presente):
@@ -154,7 +158,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 Map.of("role", "system", "content", "Sei un assistente che crea mindmap didattiche accurate in italiano."),
                 Map.of("role", "user", "content", userPrompt)
         ));
-        payload.put("temperature", 0.7);
+        payload.put("temperature", 0.2);
         return payload;
     }
 
