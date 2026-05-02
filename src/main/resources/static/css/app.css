@@ -100,6 +100,9 @@ textarea {
 input[type="file"] {
     padding: 10px 12px;
 }
+.form-row-spaced {
+    margin-top: 12px;
+}
 .form-row input[type="text"] { flex: 1 1 320px; }
 .field-error { color: var(--danger); margin-top: 8px; }
 .flash-ok {

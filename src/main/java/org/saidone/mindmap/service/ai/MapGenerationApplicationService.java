@@ -28,6 +28,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -55,11 +58,15 @@ public class MapGenerationApplicationService {
             try {
                 val generated = mapGenerationService.generateMindMap(request);
                 sanitize(generated);
+                enforceDepth(generated, request.getMaxDepth());
                 return generated;
             } catch (RuntimeException ex) {
                 lastError = ex;
                 log.warn("Tentativo generazione mindmap {} di {} fallito", i, attempts, ex);
             }
+        }
+        if (lastError != null && StringUtils.hasText(lastError.getMessage())) {
+            throw new IllegalStateException(lastError.getMessage(), lastError);
         }
         throw new IllegalStateException("Impossibile generare la mindmap con l'AI al momento.", lastError);
     }
@@ -68,8 +75,16 @@ public class MapGenerationApplicationService {
         if (request == null || request.getNumberOfNodes() == null) {
             throw new IllegalStateException("Richiesta di generazione non valida.");
         }
+        if (!StringUtils.hasText(request.getTopic())) {
+            throw new IllegalStateException("Inserisci un argomento o una breve descrizione.");
+        }
+        request.setTopic(request.getTopic().trim());
 
         int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
+        if (request.getMaxDepth() == null) {
+            request.setMaxDepth(3);
+        }
+        request.setMaxDepth(Math.max(2, Math.min(request.getMaxDepth(), 6)));
         if (request.getNumberOfNodes() > effectiveMaxNodes) {
             throw new IllegalStateException(String.format("Numero massimo nodi superato. Limite: %d", effectiveMaxNodes));
         }
@@ -102,6 +117,78 @@ public class MapGenerationApplicationService {
         }
     }
 
+
+    private void enforceDepth(MindMapDto generated, Integer requestedMaxDepth) {
+        int targetDepth = requestedMaxDepth == null ? 3 : requestedMaxDepth;
+        targetDepth = Math.max(2, Math.min(targetDepth, 6));
+
+        int nodeCount = generated.getNodes().size();
+        if (nodeCount <= 1) {
+            return;
+        }
+
+        generated.getNodes().get(0).setParentId(null);
+
+        for (int i = 1; i < nodeCount; i++) {
+            NodeDto node = generated.getNodes().get(i);
+            Long rawParentId = node.getParentId();
+
+            int parentIndex = rawParentId == null ? 0 : rawParentId.intValue();
+            if (parentIndex < 0 || parentIndex >= i) {
+                parentIndex = 0;
+                node.setParentId(0L);
+            }
+
+            int depth = computeDepth(generated.getNodes(), i, targetDepth);
+            if (depth > targetDepth) {
+                int safeParent = findAncestorWithinDepth(generated.getNodes(), parentIndex, targetDepth - 1);
+                node.setParentId((long) safeParent);
+            }
+        }
+    }
+
+    private int computeDepth(List<NodeDto> nodes, int nodeIndex, int maxDepthGuard) {
+        int depth = 0;
+        int current = nodeIndex;
+        int guard = 0;
+        while (current > 0 && guard <= nodes.size()) {
+            Long parentId = nodes.get(current).getParentId();
+            if (parentId == null) {
+                break;
+            }
+            int parentIndex = parentId.intValue();
+            if (parentIndex < 0 || parentIndex >= current) {
+                return maxDepthGuard + 1;
+            }
+            depth++;
+            current = parentIndex;
+            if (depth > maxDepthGuard) {
+                return depth;
+            }
+            guard++;
+        }
+        return depth;
+    }
+
+    private int findAncestorWithinDepth(List<NodeDto> nodes, int parentIndex, int maxAllowedDepth) {
+        int current = parentIndex;
+        int currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+        int guard = 0;
+        while (currentDepth > maxAllowedDepth && current > 0 && guard <= nodes.size()) {
+            Long nextParent = nodes.get(current).getParentId();
+            if (nextParent == null) {
+                return 0;
+            }
+            int nextIndex = nextParent.intValue();
+            if (nextIndex < 0 || nextIndex >= current) {
+                return 0;
+            }
+            current = nextIndex;
+            currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+            guard++;
+        }
+        return currentDepth <= maxAllowedDepth ? current : 0;
+    }
     private boolean hasValidNode(NodeDto node) {
         return node != null && StringUtils.hasText(node.getText());
     }

@@ -19,7 +19,9 @@
 package org.saidone.mindmap.controller;
 
 import org.saidone.mindmap.dto.CreateMindMapRequest;
+import org.saidone.mindmap.dto.MapGenerationRequestDto;
 import org.saidone.mindmap.service.MindMapService;
+import org.saidone.mindmap.service.ai.MapGenerationApplicationService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -32,9 +34,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class MindMapPageController {
 
     private final MindMapService mindMapService;
+    private final MapGenerationApplicationService mapGenerationApplicationService;
 
-    public MindMapPageController(MindMapService mindMapService) {
+    public MindMapPageController(MindMapService mindMapService,
+                                 MapGenerationApplicationService mapGenerationApplicationService) {
         this.mindMapService = mindMapService;
+        this.mapGenerationApplicationService = mapGenerationApplicationService;
     }
 
     @GetMapping
@@ -62,6 +67,24 @@ public class MindMapPageController {
     public String createTemplate(@PathVariable String templateKey) {
         var map = mindMapService.createFromTemplate(templateKey);
         return "redirect:/maps/" + map.getId();
+    }
+
+    @PostMapping("/ai")
+    public String createWithAi(@RequestParam("topic") String topic,
+                               @RequestParam(name = "maxDepth", defaultValue = "3") Integer maxDepth,
+                               RedirectAttributes redirectAttributes) {
+        var request = new MapGenerationRequestDto();
+        request.setTopic(topic);
+        request.setNumberOfNodes(8);
+        request.setMaxDepth(Math.max(1, Math.min(maxDepth, 6)));
+        try {
+            var generated = mapGenerationApplicationService.generateMindMap(request);
+            var map = mindMapService.createFromGeneratedMap(generated);
+            return "redirect:/maps/" + map.getId();
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("aiError", ex.getMessage());
+            return "redirect:/maps";
+        }
     }
 
     @GetMapping("/{id}")

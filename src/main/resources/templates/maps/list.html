@@ -36,6 +36,26 @@
     <div th:if="${message}" class="flash-ok" th:text="${message}"></div>
 
     <section class="section-card">
+        <h2>Crea mappa con AI</h2>
+        <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
+        <form th:action="@{/maps/ai}" method="post" class="create-form">
+            <label for="ai-topic">Argomento o descrizione breve</label>
+            <input id="ai-topic" name="topic" type="text" placeholder="Per esempio: Il ciclo dell'acqua" maxlength="160" required>
+            <label for="ai-depth">Profondità massima</label>
+            <select id="ai-depth" name="maxDepth">
+                <option value="2">2 livelli</option>
+                <option value="3" selected>3 livelli</option>
+                <option value="4">4 livelli</option>
+                <option value="5">5 livelli</option>
+            </select>
+            <div class="form-row form-row-spaced">
+                <button type="submit">Crea mappa con AI</button>
+            </div>
+        </form>
+        <div class="field-error" th:if="${aiError}" th:text="${aiError}"></div>
+    </section>
+
+    <section class="section-card">
         <h2>Crea una nuova mappa</h2>
         <form th:action="@{/maps}" method="post" th:object="${mapForm}" class="create-form">
             <label for="title">Titolo della mappa</label>

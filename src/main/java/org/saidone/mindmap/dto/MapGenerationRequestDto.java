@@ -24,5 +24,6 @@ import lombok.Data;
 public class MapGenerationRequestDto {
     private String topic;
     private Integer numberOfNodes;
+    private Integer maxDepth;
     private String referenceText;
 }
