@@ -21,7 +21,7 @@ const BASE_NODE_WIDTH = 180;
 const BASE_NODE_HEIGHT = 64;
 const IMAGE_NODE_WIDTH = 220;
 const IMAGE_NODE_HEIGHT = 110;
-const DEFAULT_IMAGE_SIZE = 42;
+const DEFAULT_IMAGE_SIZE = 128;
 const MIN_IMAGE_SIZE = 24;
 const MAX_IMAGE_SIZE = 240;
 const MIN_NODE_WIDTH = 120;
@@ -928,7 +928,7 @@ function normalizeImageUri(value) {
 }
 
 function clampImageSize(value) {
-    if (!Number.isFinite(value)) return DEFAULT_IMAGE_SIZE;
+    if (!Number.isFinite(value) || value <= 0) return DEFAULT_IMAGE_SIZE;
     return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, Math.round(value)));
 }
 
