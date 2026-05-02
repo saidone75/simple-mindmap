@@ -16,12 +16,13 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.saidone.mindmap.service.ai;
+package org.saidone.mindmap.dto;
 
-import org.saidone.mindmap.dto.MindMapDto;
-import org.saidone.mindmap.dto.MapGenerationRequestDto;
+import lombok.Data;
 
-public interface MapGenerationService {
-
-    MindMapDto generateMindMap(MapGenerationRequestDto request);
+@Data
+public class MapGenerationRequestDto {
+    private String topic;
+    private Integer numberOfNodes;
+    private String referenceText;
 }

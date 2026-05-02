@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.saidone.mindmap.dto.MindMapDto;
 import org.saidone.mindmap.dto.NodeDto;
-import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
+import org.saidone.mindmap.dto.MapGenerationRequestDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -31,12 +31,12 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class QuizGenerationApplicationService {
+public class MapGenerationApplicationService {
 
     private final MapGenerationService mapGenerationService;
 
-    @Value("${app.ai.generation.max-questions:20}")
-    private int maxQuestionsPerRequest;
+    @Value("${app.ai.generation.max-nodes:20}")
+    private int maxNodesPerRequest;
 
     @Value("${app.ai.generation.max-attachment-chars:60000}")
     private int maxAttachmentChars;
@@ -44,16 +44,16 @@ public class QuizGenerationApplicationService {
     @Value("${app.ai.generation.max-attempts:2}")
     private int maxAttempts;
 
-    public MindMapDto generateMindMap(QuizGenerationRequestDto request, String attachmentText) {
+    public MindMapDto generateMindMap(MapGenerationRequestDto request) {
         validateRequestLimits(request);
 
-        val safeAttachmentText = truncateAttachmentText(attachmentText);
+        applyReferenceTextLimit(request);
         val attempts = Math.max(1, maxAttempts);
 
         RuntimeException lastError = null;
         for (int i = 1; i <= attempts; i++) {
             try {
-                val generated = mapGenerationService.generateMindMap(request, safeAttachmentText);
+                val generated = mapGenerationService.generateMindMap(request);
                 sanitize(generated);
                 return generated;
             } catch (RuntimeException ex) {
@@ -64,23 +64,25 @@ public class QuizGenerationApplicationService {
         throw new IllegalStateException("Impossibile generare la mindmap con l'AI al momento.", lastError);
     }
 
-    private void validateRequestLimits(QuizGenerationRequestDto request) {
-        if (request == null || request.getNumberOfQuestions() == null) {
+    private void validateRequestLimits(MapGenerationRequestDto request) {
+        if (request == null || request.getNumberOfNodes() == null) {
             throw new IllegalStateException("Richiesta di generazione non valida.");
         }
 
-        int effectiveMaxQuestions = Math.max(1, maxQuestionsPerRequest);
-        if (request.getNumberOfQuestions() > effectiveMaxQuestions) {
-            throw new IllegalStateException(String.format("Numero massimo domande superato. Limite: %d", effectiveMaxQuestions));
+        int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
+        if (request.getNumberOfNodes() > effectiveMaxNodes) {
+            throw new IllegalStateException(String.format("Numero massimo nodi superato. Limite: %d", effectiveMaxNodes));
         }
     }
 
-    private String truncateAttachmentText(String attachmentText) {
-        if (!StringUtils.hasText(attachmentText)) {
-            return null;
+    private void applyReferenceTextLimit(MapGenerationRequestDto request) {
+        if (!StringUtils.hasText(request.getReferenceText())) {
+            request.setReferenceText(null);
+            return;
         }
         int effectiveMaxAttachmentChars = maxAttachmentChars > 0 ? maxAttachmentChars : 30000;
-        return attachmentText.substring(0, Math.min(effectiveMaxAttachmentChars, attachmentText.length()));
+        String truncated = request.getReferenceText().substring(0, Math.min(effectiveMaxAttachmentChars, request.getReferenceText().length()));
+        request.setReferenceText(truncated);
     }
 
     private void sanitize(MindMapDto generated) {

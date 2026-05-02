@@ -26,7 +26,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.saidone.mindmap.dto.MindMapDto;
-import org.saidone.quizmaker.dto.QuizGenerationRequestDto;
+import org.saidone.mindmap.dto.MapGenerationRequestDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -89,12 +89,12 @@ public class OpenAiMapGenerationService implements MapGenerationService {
     }
 
     @Override
-    public MindMapDto generateMindMap(QuizGenerationRequestDto request, String attachmentText) {
+    public MindMapDto generateMindMap(MapGenerationRequestDto request) {
         if (!StringUtils.hasText(apiKey)) {
             throw new IllegalStateException("Chiave API di OpenAI non configurata. Imposta app.openai.api-key.");
         }
 
-        val payload = buildPayload(request, attachmentText);
+        val payload = buildPayload(request);
         val responseBody = openAiRestClient.post()
                 .uri("/chat/completions")
                 .header(HttpHeaders.AUTHORIZATION, String.format("Bearer %s", apiKey))
@@ -115,7 +115,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
 
 
 
-    private Map<String, Object> buildPayload(QuizGenerationRequestDto request, String attachmentText) {
+    private Map<String, Object> buildPayload(MapGenerationRequestDto request) {
         val userPrompt = """
                 Crea una mindmap in italiano e rispondi SOLO con JSON valido compatibile con MindMapDto.
                 Campi obbligatori: title (string), stylePreset (string), nodes (array).
@@ -124,8 +124,6 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 Vincoli:
                 - Argomento: %s
                 - Numero nodi contenuto (escluso nodo principale): %d
-                - Difficoltà: %s
-                - Tono: %s
                 - Il primo nodo rappresenta il tema centrale.
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
                 - branchText deve essere una breve nota utile.
@@ -136,10 +134,8 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 %s
                 """.formatted(
                 request.getTopic(),
-                request.getNumberOfQuestions(),
-                request.getDifficulty(),
-                request.getTone(),
-                StringUtils.hasText(attachmentText) ? attachmentText : "N/A"
+                request.getNumberOfNodes(),
+                StringUtils.hasText(request.getReferenceText()) ? request.getReferenceText() : "N/A"
         );
 
         val payload = new HashMap<String, Object>();
