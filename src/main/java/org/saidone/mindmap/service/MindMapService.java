@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -138,6 +139,45 @@ public class MindMapService {
             }
             default -> {}
         }
+        return saved;
+    }
+
+    @Transactional
+    public MindMap createFromGeneratedMap(MindMapDto generatedMap) {
+        String title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
+                ? "Mappa generata con AI"
+                : generatedMap.getTitle().trim();
+
+        MindMap map = new MindMap();
+        map.setTitle(title);
+        map.setStylePreset(normalizeStylePreset(generatedMap.getStylePreset()));
+        MindMap saved = mindMapRepository.save(map);
+
+        AtomicReference<Long> rootId = new AtomicReference<>();
+        generatedMap.getNodes().forEach(nodeDto -> {
+            Long parentId = nodeDto.getParentId();
+            if (parentId != null && rootId.get() != null) {
+                parentId = rootId.get();
+            }
+
+            Node node = createNode(
+                    saved.getId(),
+                    parentId,
+                    nodeDto.getText().trim(),
+                    nodeDto.getX() != null ? nodeDto.getX() : 620,
+                    nodeDto.getY() != null ? nodeDto.getY() : 260,
+                    nodeDto.getColor() != null ? nodeDto.getColor() : "#9FC5E8"
+            );
+            node.setEmoji(normalizeNodeEmoji(nodeDto.getEmoji()));
+            node.setBranchText(normalizeBranchText(nodeDto.getBranchText()));
+            node.setImageUri(normalizeImageUri(nodeDto.getImageUri()));
+            nodeRepository.save(node);
+
+            if (rootId.get() == null) {
+                rootId.set(node.getId());
+            }
+        });
+
         return saved;
     }
 

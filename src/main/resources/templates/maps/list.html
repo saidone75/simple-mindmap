@@ -36,6 +36,16 @@
     <div th:if="${message}" class="flash-ok" th:text="${message}"></div>
 
     <section class="section-card">
+        <h2>Crea mappa con AI</h2>
+        <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
+        <form th:action="@{/maps/ai}" method="post" class="create-form">
+            <div class="form-row">
+                <button type="submit">Crea mappa con AI</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="section-card">
         <h2>Crea una nuova mappa</h2>
         <form th:action="@{/maps}" method="post" th:object="${mapForm}" class="create-form">
             <label for="title">Titolo della mappa</label>

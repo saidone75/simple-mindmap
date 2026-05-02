@@ -19,7 +19,9 @@
 package org.saidone.mindmap.controller;
 
 import org.saidone.mindmap.dto.CreateMindMapRequest;
+import org.saidone.mindmap.dto.MapGenerationRequestDto;
 import org.saidone.mindmap.service.MindMapService;
+import org.saidone.mindmap.service.ai.MapGenerationApplicationService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -32,9 +34,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class MindMapPageController {
 
     private final MindMapService mindMapService;
+    private final MapGenerationApplicationService mapGenerationApplicationService;
 
-    public MindMapPageController(MindMapService mindMapService) {
+    public MindMapPageController(MindMapService mindMapService,
+                                 MapGenerationApplicationService mapGenerationApplicationService) {
         this.mindMapService = mindMapService;
+        this.mapGenerationApplicationService = mapGenerationApplicationService;
     }
 
     @GetMapping
@@ -61,6 +66,16 @@ public class MindMapPageController {
     @PostMapping("/template/{templateKey}")
     public String createTemplate(@PathVariable String templateKey) {
         var map = mindMapService.createFromTemplate(templateKey);
+        return "redirect:/maps/" + map.getId();
+    }
+
+    @PostMapping("/ai")
+    public String createWithAi() {
+        var request = new MapGenerationRequestDto();
+        request.setTopic("Nuova mappa didattica");
+        request.setNumberOfNodes(8);
+        var generated = mapGenerationApplicationService.generateMindMap(request);
+        var map = mindMapService.createFromGeneratedMap(generated);
         return "redirect:/maps/" + map.getId();
     }
 
