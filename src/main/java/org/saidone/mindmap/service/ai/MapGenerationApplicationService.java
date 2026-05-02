@@ -61,6 +61,9 @@ public class MapGenerationApplicationService {
                 log.warn("Tentativo generazione mindmap {} di {} fallito", i, attempts, ex);
             }
         }
+        if (lastError != null && StringUtils.hasText(lastError.getMessage())) {
+            throw new IllegalStateException(lastError.getMessage(), lastError);
+        }
         throw new IllegalStateException("Impossibile generare la mindmap con l'AI al momento.", lastError);
     }
 
@@ -68,6 +71,10 @@ public class MapGenerationApplicationService {
         if (request == null || request.getNumberOfNodes() == null) {
             throw new IllegalStateException("Richiesta di generazione non valida.");
         }
+        if (!StringUtils.hasText(request.getTopic())) {
+            throw new IllegalStateException("Inserisci un argomento o una breve descrizione.");
+        }
+        request.setTopic(request.getTopic().trim());
 
         int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
         if (request.getNumberOfNodes() > effectiveMaxNodes) {

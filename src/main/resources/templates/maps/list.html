@@ -39,6 +39,8 @@
         <h2>Crea mappa con AI</h2>
         <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
         <form th:action="@{/maps/ai}" method="post" class="create-form">
+            <label for="ai-topic">Argomento o descrizione breve</label>
+            <input id="ai-topic" name="topic" type="text" placeholder="Per esempio: Il ciclo dell'acqua" maxlength="160" required>
             <div class="form-row">
                 <button type="submit">Crea mappa con AI</button>
             </div>

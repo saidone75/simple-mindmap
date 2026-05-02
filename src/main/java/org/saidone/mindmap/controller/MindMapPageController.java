@@ -70,15 +70,16 @@ public class MindMapPageController {
     }
 
     @PostMapping("/ai")
-    public String createWithAi(RedirectAttributes redirectAttributes) {
+    public String createWithAi(@RequestParam("topic") String topic,
+                               RedirectAttributes redirectAttributes) {
         var request = new MapGenerationRequestDto();
-        request.setTopic("Nuova mappa didattica");
+        request.setTopic(topic);
         request.setNumberOfNodes(8);
         try {
             var generated = mapGenerationApplicationService.generateMindMap(request);
             var map = mindMapService.createFromGeneratedMap(generated);
             return "redirect:/maps/" + map.getId();
-        } catch (IllegalStateException ex) {
+        } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("aiError", ex.getMessage());
             return "redirect:/maps";
         }
