@@ -36,6 +36,9 @@ public class Node {
     @Column(nullable = false)
     private String text;
 
+    @Column
+    private String description;
+
     private String emoji;
 
     private String branchText;
@@ -81,6 +84,8 @@ public class Node {
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public String getEmoji() { return emoji; }
     public void setEmoji(String emoji) { this.emoji = emoji; }
     public String getBranchText() { return branchText; }
