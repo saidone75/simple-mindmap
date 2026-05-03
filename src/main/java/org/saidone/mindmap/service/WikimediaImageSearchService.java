@@ -16,15 +16,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.saidone.mindmap.dto;
+package org.saidone.mindmap.service;
 
-import lombok.Data;
+public interface WikimediaImageSearchService {
 
-@Data
-public class MapGenerationRequestDto {
-    private String topic;
-    private Integer numberOfNodes;
-    private Integer maxDepth;
-    private String referenceText;
-    private Boolean searchWikimediaImages;
+    String searchImage(String[] keywords);
+
+    default String searchImage(String[] keywords, String preferredMode) {
+        return searchImage(keywords);
+    }
+
 }

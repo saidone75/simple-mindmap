@@ -37,6 +37,7 @@ public class NodeDto {
     private Integer imageHeight;
     private Integer nodeWidth;
     private Integer nodeHeight;
+    private String[] imageKeywords;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -74,4 +75,6 @@ public class NodeDto {
     public void setNodeWidth(Integer nodeWidth) { this.nodeWidth = nodeWidth; }
     public Integer getNodeHeight() { return nodeHeight; }
     public void setNodeHeight(Integer nodeHeight) { this.nodeHeight = nodeHeight; }
+    public String[] getImageKeywords() { return imageKeywords; }
+    public void setImageKeywords(String[] imageKeywords) { this.imageKeywords = imageKeywords; }
 }

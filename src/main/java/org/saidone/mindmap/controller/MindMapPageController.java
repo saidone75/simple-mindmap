@@ -72,14 +72,16 @@ public class MindMapPageController {
     @PostMapping("/ai")
     public String createWithAi(@RequestParam("topic") String topic,
                                @RequestParam(name = "maxDepth", defaultValue = "3") Integer maxDepth,
+                               @RequestParam(name = "searchWikimediaImages", defaultValue = "false") boolean searchWikimediaImages,
                                RedirectAttributes redirectAttributes) {
         var request = new MapGenerationRequestDto();
         request.setTopic(topic);
         request.setNumberOfNodes(8);
         request.setMaxDepth(Math.max(1, Math.min(maxDepth, 6)));
+        request.setSearchWikimediaImages(searchWikimediaImages);
         try {
             var generated = mapGenerationApplicationService.generateMindMap(request);
-            var map = mindMapService.createFromGeneratedMap(generated);
+            var map = mindMapService.createFromGeneratedMap(generated, searchWikimediaImages);
             return "redirect:/maps/" + map.getId();
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("aiError", ex.getMessage());
