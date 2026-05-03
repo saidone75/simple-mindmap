@@ -15,3 +15,16 @@ spring:
     cache: false
 server:
   port: 8080
+app:
+  openai:
+    api-key: ${OPENAI_API_KEY:}
+    model: ${OPENAI_MODEL:gpt-5.4-nano}
+ai:
+  embedding:
+    model-url: ${AI_EMBEDDING_MODEL_URL:djl://ai.djl.huggingface.pytorch/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+  generation:
+    max-questions: ${AI_GENERATION_MAX_QUESTIONS:20}
+    max-attachment-chars: ${AI_GENERATION_MAX_ATTACHMENT_CHARS:60000}
+    max-attempts: ${AI_GENERATION_MAX_ATTEMPTS:2}
+wikimedia:
+  user-agent: ${WIKIMEDIA_USER_AGENT:AliceSimpleMindMap/1.0 (+https://github.com/saidone/simple-mindmap; mailto:bot-traffic@wikimedia.org)}

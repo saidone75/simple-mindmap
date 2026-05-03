@@ -65,13 +65,19 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["text", "description", "emoji", "branchText", "imageUri", "parentId"],
+                    "required": ["text", "description", "emoji", "branchText", "imageUri", "imageKeywords", "parentId"],
                     "properties": {
                       "text": { "type": "string" },
                       "description": { "type": "string" },
                       "emoji": { "type": "string" },
                       "branchText": { "type": "string" },
                       "imageUri": { "type": "string" },
+                      "imageKeywords": {
+                        "type": "array",
+                        "minItems": 3,
+                        "maxItems": 4,
+                        "items": { "type": "string" }
+                      },
                       "parentId": { "type": ["integer", "null"] }
                     }
                   }
@@ -133,6 +139,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
                 - branchText deve essere una breve nota utile (non usare qui la descrizione principale).
                 - imageUri deve essere sempre stringa vuota.
+                - imageKeywords deve contenere 3 o 4 parole chiave brevi e pertinenti per cercare immagini su Wikimedia per il nodo.
                 - parentId: null solo per il nodo principale (primo elemento).
                 - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
                 - Struttura gerarchica obbligatoria: radice -> figli -> nipoti -> livelli successivi.
