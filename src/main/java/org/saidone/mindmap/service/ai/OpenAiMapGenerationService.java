@@ -140,6 +140,8 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - Le grandi categorie parallele (es. Mammiferi, Uccelli, Rettili, Pesci, Insetti) devono essere sorelle con lo stesso parentId, non una figlia dell'altra.
                 - Prima di rispondere, fai un controllo di coerenza semantica di tutti gli archi padre->figlio e correggi eventuali errori.
                 - Non superare la profondità massima richiesta: massimo %d livelli dal nodo radice.
+                - Se la mappa raggiunge il livello massimo in almeno un ramo, tutti i rami principali devono raggiungere lo stesso livello massimo.
+                - Evita rami principali tronchi: quando possibile, completa ogni ramo con nodi coerenti fino al livello massimo richiesto.
 
                 Testo di riferimento allegato (se presente):
                 %s
