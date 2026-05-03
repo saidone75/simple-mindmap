@@ -77,6 +77,7 @@ public class MindMapService {
         root.setMapId(savedMap.getId());
         root.setParentId(null);
         root.setText(savedMap.getTitle());
+        root.setDescription("Breve descrizione del tema principale.");
         root.setEmoji(null);
         root.setBranchText(null);
         root.setX(620);
@@ -110,32 +111,32 @@ public class MindMapService {
         map.setStylePreset(DEFAULT_STYLE_PRESET);
         MindMap saved = mindMapRepository.save(map);
 
-        Node root = createNode(saved.getId(), null, title, 620, 260, "#FFD966");
+        Node root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, "#FFD966");
 
         switch (templateKey) {
             case "italiano" -> {
-                createNode(saved.getId(), root.getId(), "Grammatica", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Lettura", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Scrittura", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Lessico", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Grammatica", "Regole e strutture della lingua.", 320, 120, "#9FC5E8");
+                createNode(saved.getId(), root.getId(), "Lettura", "Comprensione e analisi dei testi.", 930, 120, "#B6D7A8");
+                createNode(saved.getId(), root.getId(), "Scrittura", "Produzione di testi chiari e coerenti.", 320, 420, "#F4CCCC");
+                createNode(saved.getId(), root.getId(), "Lessico", "Arricchimento del vocabolario.", 930, 420, "#F9CB9C");
             }
             case "scienze" -> {
-                createNode(saved.getId(), root.getId(), "Animali", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Piante", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Corpo umano", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Esperimenti", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Animali", "Classificazione e caratteristiche principali.", 320, 120, "#9FC5E8");
+                createNode(saved.getId(), root.getId(), "Piante", "Strutture e funzioni essenziali.", 930, 120, "#B6D7A8");
+                createNode(saved.getId(), root.getId(), "Corpo umano", "Sistemi e organi principali.", 320, 420, "#F4CCCC");
+                createNode(saved.getId(), root.getId(), "Esperimenti", "Attività pratiche per osservare fenomeni.", 930, 420, "#F9CB9C");
             }
             case "storia" -> {
-                createNode(saved.getId(), root.getId(), "Linea del tempo", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Personaggi", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Eventi", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Luoghi", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Linea del tempo", "Sequenza cronologica degli eventi.", 320, 120, "#9FC5E8");
+                createNode(saved.getId(), root.getId(), "Personaggi", "Figure storiche rilevanti.", 930, 120, "#B6D7A8");
+                createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, "#F4CCCC");
+                createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, "#F9CB9C");
             }
             case "geografia" -> {
-                createNode(saved.getId(), root.getId(), "Montagne", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Fiumi", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Clima", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Città", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Montagne", "Rilievi e caratteristiche.", 320, 120, "#9FC5E8");
+                createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, "#B6D7A8");
+                createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, "#F4CCCC");
+                createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, "#F9CB9C");
             }
             default -> {}
         }
@@ -167,6 +168,7 @@ public class MindMapService {
                     saved.getId(),
                     parentId,
                     nodeDto.getText().trim(),
+                    normalizeNodeDescription(nodeDto.getDescription()),
                     nodeDto.getX() != null ? nodeDto.getX() : 620,
                     nodeDto.getY() != null ? nodeDto.getY() : 260,
                     nodeDto.getColor() != null ? nodeDto.getColor() : "#9FC5E8"
@@ -189,6 +191,7 @@ public class MindMapService {
         node.setMapId(mapId);
         node.setParentId(request.getParentId());
         node.setText(request.getText() == null || request.getText().isBlank() ? "Nuovo nodo" : request.getText().trim());
+        node.setDescription(normalizeNodeDescription(request.getDescription()));
         node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
         node.setBranchText(normalizeBranchText(request.getBranchText()));
         node.setX(request.getX() == null ? 300 : request.getX());
@@ -212,6 +215,7 @@ public class MindMapService {
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
 
         if (request.getText() != null) node.setText(request.getText().trim().isEmpty() ? "Nodo" : request.getText().trim());
+        if (request.getDescription() != null) node.setDescription(normalizeNodeDescription(request.getDescription()));
         if (request.getEmoji() != null) node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
         if (request.getBranchText() != null) node.setBranchText(normalizeBranchText(request.getBranchText()));
         if (request.getX() != null) node.setX(request.getX());
@@ -258,11 +262,12 @@ public class MindMapService {
         nodeRepository.deleteById(nodeId);
     }
 
-    private Node createNode(Long mapId, Long parentId, String text, int x, int y, String color) {
+    private Node createNode(Long mapId, Long parentId, String text, String description, int x, int y, String color) {
         Node node = new Node();
         node.setMapId(mapId);
         node.setParentId(parentId);
         node.setText(text);
+        node.setDescription(normalizeNodeDescription(description));
         node.setEmoji(null);
         node.setBranchText(null);
         node.setX(x);
@@ -317,6 +322,12 @@ public class MindMapService {
                 .toString();
     }
 
+    private String normalizeNodeDescription(String description) {
+        if (description == null || description.isBlank()) return "Breve descrizione del nodo.";
+        String normalized = description.trim().replaceAll("\\s+", " ");
+        return normalized.length() > 280 ? normalized.substring(0, 280) : normalized;
+    }
+
     private String normalizeBranchText(String branchText) {
         if (branchText == null) return null;
         String value = branchText.trim();
@@ -337,6 +348,7 @@ public class MindMapService {
         dto.setId(node.getId());
         dto.setParentId(node.getParentId());
         dto.setText(node.getText());
+        dto.setDescription(node.getDescription());
         dto.setEmoji(node.getEmoji());
         dto.setBranchText(node.getBranchText());
         dto.setX(node.getX());

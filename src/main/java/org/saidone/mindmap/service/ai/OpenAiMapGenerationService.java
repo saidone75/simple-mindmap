@@ -65,9 +65,10 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                   "items": {
                     "type": "object",
                     "additionalProperties": false,
-                    "required": ["text", "emoji", "branchText", "imageUri", "parentId"],
+                    "required": ["text", "description", "emoji", "branchText", "imageUri", "parentId"],
                     "properties": {
                       "text": { "type": "string" },
+                      "description": { "type": "string" },
                       "emoji": { "type": "string" },
                       "branchText": { "type": "string" },
                       "imageUri": { "type": "string" },
@@ -119,15 +120,18 @@ public class OpenAiMapGenerationService implements MapGenerationService {
         val userPrompt = """
                 Crea una mindmap in italiano e rispondi SOLO con JSON valido compatibile con MindMapDto.
                 Campi obbligatori: title (string), stylePreset (string), nodes (array).
-                Ogni node deve avere: text, emoji, branchText, imageUri, parentId.
+                Ogni node deve avere: text (titolo), description (breve descrizione/curiosità), emoji, branchText, imageUri, parentId.
 
                 Vincoli:
                 - Argomento: %s
                 - Numero nodi contenuto (escluso nodo principale): %d
                 - Profondità massima della mappa (livelli gerarchici): %d
                 - Il primo nodo rappresenta il tema centrale.
+                - text deve essere sempre un titolo breve (2-6 parole).
+                - description è OBBLIGATORIA per ogni nodo: una sola frase breve con descrizione o curiosità utile.
+                - Non lasciare mai description vuota o generica (es. "descrizione", "nodo", "...").
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
-                - branchText deve essere una breve nota utile.
+                - branchText deve essere una breve nota utile (non usare qui la descrizione principale).
                 - imageUri deve essere sempre stringa vuota.
                 - parentId: null solo per il nodo principale (primo elemento).
                 - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
@@ -140,6 +144,8 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - Le grandi categorie parallele (es. Mammiferi, Uccelli, Rettili, Pesci, Insetti) devono essere sorelle con lo stesso parentId, non una figlia dell'altra.
                 - Prima di rispondere, fai un controllo di coerenza semantica di tutti gli archi padre->figlio e correggi eventuali errori.
                 - Non superare la profondità massima richiesta: massimo %d livelli dal nodo radice.
+                - Se la mappa raggiunge il livello massimo in almeno un ramo, tutti i rami principali devono raggiungere lo stesso livello massimo.
+                - Evita rami principali tronchi: quando possibile, completa ogni ramo con nodi coerenti fino al livello massimo richiesto.
 
                 Testo di riferimento allegato (se presente):
                 %s

@@ -110,6 +110,7 @@ public class MapGenerationApplicationService {
 
         generated.setNodes(generated.getNodes().stream()
                 .filter(this::hasValidNode)
+                .map(this::normalizeNodeDescription)
                 .toList());
 
         if (generated.getNodes().isEmpty()) {
@@ -191,6 +192,17 @@ public class MapGenerationApplicationService {
     }
     private boolean hasValidNode(NodeDto node) {
         return node != null && StringUtils.hasText(node.getText());
+    }
+
+    private NodeDto normalizeNodeDescription(NodeDto node) {
+        String text = node.getText() == null ? "Nodo" : node.getText().trim();
+        if (!StringUtils.hasText(node.getDescription())) {
+            node.setDescription("Breve descrizione: " + text + ".");
+            return node;
+        }
+        String normalized = node.getDescription().trim().replaceAll("\\s+", " ");
+        node.setDescription(normalized.length() > 280 ? normalized.substring(0, 280) : normalized);
+        return node;
     }
 
 }

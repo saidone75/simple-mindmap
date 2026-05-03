@@ -52,6 +52,7 @@ const state = {
 
 const svg = document.getElementById("mindmap-canvas");
 const textInput = document.getElementById("node-text");
+const descriptionInput = document.getElementById("node-description");
 const colorInput = document.getElementById("node-color");
 const branchColorInput = document.getElementById("branch-color");
 const branchStyleInput = document.getElementById("branch-style");
@@ -116,7 +117,7 @@ function isSketchPreset() {
 
 function getSketchNodeSize(node) {
     const lines = getNodeDisplayLines(node, 24);
-    const longest = lines.reduce((max, line) => Math.max(max, line.length), 0);
+    const longest = lines.reduce((max, line) => Math.max(max, (line.text || "").length), 0);
     const fontSize = Number(node.fontSize) || 18;
     const width = Math.max(120, (longest * (fontSize * 0.65)) + 36);
     const height = Math.max(56, (lines.length * (fontSize * 1.2)) + 28);
@@ -329,11 +330,16 @@ function render() {
         text.setAttribute("text-anchor", "middle");
         text.setAttribute("dominant-baseline", "middle");
         text.setAttribute("font-size", fontSize);
+        const descriptionFontSize = Math.max(12, Math.round(fontSize * 0.78));
         lines.forEach((line, index) => {
             const tspan = document.createElementNS(SVG_NS, "tspan");
             tspan.setAttribute("x", node.x + width / 2);
             tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
-            tspan.textContent = line || " ";
+            if (line.isDescription) {
+                tspan.setAttribute("font-size", String(descriptionFontSize));
+                tspan.setAttribute("font-weight", "500");
+            }
+            tspan.textContent = line.text || " ";
             text.appendChild(tspan);
         });
         text.addEventListener("mousedown", event => event.stopPropagation());
@@ -682,10 +688,32 @@ function sanitizePlainText(value) {
 }
 
 function getNodeDisplayLines(node, maxLineLength) {
-    const base = normalizeNodeText(node.text || "Nodo");
-    return base
-        .split("\n")
-        .map(line => truncate(line, maxLineLength));
+    const title = normalizeNodeText(node.text || "Nodo");
+    const description = normalizeNodeText(node.description || "");
+    const titleLines = wrapTextByWords(title, maxLineLength).map(line => ({ text: line, isDescription: false }));
+    const descriptionLines = description
+        ? wrapTextByWords(description, Math.max(12, maxLineLength + 6))
+            .map((line, idx) => ({ text: idx === 0 ? `— ${line}` : line, isDescription: true }))
+        : [];
+    return [...titleLines, ...descriptionLines];
+}
+
+function wrapTextByWords(value, maxLineLength) {
+    const words = (value || "").split(/\s+/).filter(Boolean);
+    if (!words.length) return [" "];
+    const lines = [];
+    let current = words[0];
+    for (let i = 1; i < words.length; i++) {
+        const candidate = `${current} ${words[i]}`;
+        if (candidate.length <= maxLineLength) {
+            current = candidate;
+        } else {
+            lines.push(current);
+            current = words[i];
+        }
+    }
+    lines.push(current);
+    return lines;
 }
 
 function normalizeNodeEmoji(value) {
@@ -698,6 +726,7 @@ function selectNode(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return;
     textInput.value = node.text || "";
+    descriptionInput.value = node.description || "";
     nodeEmojiInput.value = node.emoji || "";
     branchTextInput.value = node.branchText || "";
     colorInput.value = node.color || "#FFD966";
@@ -898,7 +927,7 @@ imageHeightInput.addEventListener("input", () => {
     render();
 });
 
-const autosubmitFields = [textInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
+const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
 for (const field of autosubmitFields) {
     const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
@@ -917,6 +946,7 @@ function updateImagePreview(uri) {
 
 function applyFormToNode(node) {
     node.text = normalizeNodeText(textInput.value);
+    node.description = normalizeNodeText(descriptionInput.value || "").slice(0, 280);
     node.emoji = normalizeNodeEmoji(nodeEmojiInput.value);
     node.branchText = (branchTextInput.value || "").trim();
     node.color = colorInput.value;
@@ -991,6 +1021,7 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
     const node = await createNode({
         parentId: null,
         text: "Nuovo nodo",
+        description: "Breve descrizione del nodo.",
         emoji: null,
         branchText: null,
         x: 180 + Math.round(Math.random() * 700),
@@ -1142,7 +1173,7 @@ function applyOrganicLayout() {
             const share = getSubtreeWeight(child.id, childrenMap) / Math.max(totalWeight, 1);
             const span = (endAngle - startAngle) * share;
             const angle = cursor + span / 2;
-            const size = isSketchPreset() ? getSketchNodeSize(child) : getNodeSize(child);
+            const size = getLayoutNodeSize(child);
             const jitter = isSketchPreset() ? (Math.sin(child.id * 11.13) * 12) : 0;
             child.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * radius) + jitter - (size.width / 2));
             child.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * radius) + jitter - (size.height / 2));
@@ -1153,17 +1184,18 @@ function applyOrganicLayout() {
 
     if (roots.length === 1) {
         const root = roots[0];
-        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        const rootSize = getLayoutNodeSize(root);
         root.x = Math.round(MAP_CENTER_X - rootSize.width / 2);
         root.y = Math.round(MAP_CENTER_Y - rootSize.height / 2);
         placeChildren(root, -Math.PI + 0.2, Math.PI - 0.2, 1);
+        resolveNodeOverlaps(nodes);
         return;
     }
 
     const step = (Math.PI * 2) / roots.length;
     roots.forEach((root, index) => {
         const angle = (index * step) - Math.PI / 2;
-        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        const rootSize = getLayoutNodeSize(root);
         root.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * 120) - rootSize.width / 2);
         root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 120) - rootSize.height / 2);
         placeChildren(root, angle - step / 2, angle + step / 2, 1);
@@ -1172,18 +1204,22 @@ function applyOrganicLayout() {
     resolveNodeOverlaps(nodes);
 }
 
+function getLayoutNodeSize(node) {
+    return isSketchPreset() ? getSketchNodeSize(node) : getNodeSize(node);
+}
+
 function resolveNodeOverlaps(nodes) {
     const padding = 28;
-    for (let iteration = 0; iteration < 45; iteration += 1) {
+    for (let iteration = 0; iteration < 80; iteration += 1) {
         let moved = false;
         for (let i = 0; i < nodes.length; i += 1) {
             const first = nodes[i];
-            const firstSize = getNodeSize(first);
+            const firstSize = getLayoutNodeSize(first);
             const firstCenterX = first.x + (firstSize.width / 2);
             const firstCenterY = first.y + (firstSize.height / 2);
             for (let j = i + 1; j < nodes.length; j += 1) {
                 const second = nodes[j];
-                const secondSize = getNodeSize(second);
+                const secondSize = getLayoutNodeSize(second);
                 const secondCenterX = second.x + (secondSize.width / 2);
                 const secondCenterY = second.y + (secondSize.height / 2);
 
@@ -1192,25 +1228,19 @@ function resolveNodeOverlaps(nodes) {
 
                 if (overlapX > 0 && overlapY > 0) {
                     moved = true;
-                    if (overlapX < overlapY) {
-                        const shiftX = overlapX / 2;
-                        if (firstCenterX <= secondCenterX) {
-                            first.x -= Math.round(shiftX);
-                            second.x += Math.round(shiftX);
-                        } else {
-                            first.x += Math.round(shiftX);
-                            second.x -= Math.round(shiftX);
-                        }
-                    } else {
-                        const shiftY = overlapY / 2;
-                        if (firstCenterY <= secondCenterY) {
-                            first.y -= Math.round(shiftY);
-                            second.y += Math.round(shiftY);
-                        } else {
-                            first.y += Math.round(shiftY);
-                            second.y -= Math.round(shiftY);
-                        }
-                    }
+                    const deltaX = secondCenterX - firstCenterX;
+                    const deltaY = secondCenterY - firstCenterY;
+                    const fallbackX = ((first.id * 37 + second.id * 19) % 2 === 0) ? 1 : -1;
+                    const fallbackY = ((first.id * 13 + second.id * 17) % 2 === 0) ? 1 : -1;
+                    const directionX = Math.abs(deltaX) < 0.001 ? fallbackX : Math.sign(deltaX);
+                    const directionY = Math.abs(deltaY) < 0.001 ? fallbackY : Math.sign(deltaY);
+                    const shiftX = Math.max(1, Math.round((overlapX / 2) * directionX));
+                    const shiftY = Math.max(1, Math.round((overlapY / 2) * directionY));
+
+                    first.x -= shiftX;
+                    second.x += shiftX;
+                    first.y -= shiftY;
+                    second.y += shiftY;
                 }
             }
         }
@@ -1230,6 +1260,7 @@ async function addChildNode(parentId) {
     const node = await createNode({
         parentId: parent.id,
         text: "Nuovo nodo",
+        description: "Breve descrizione del nodo.",
         emoji: null,
         branchText: null,
         x: parent.x + 220,

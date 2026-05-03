@@ -20,6 +20,7 @@ package org.saidone.mindmap.dto;
 
 public class UpdateNodeRequest {
     private String text;
+    private String description;
     private String emoji;
     private String branchText;
     private Integer x;
@@ -37,6 +38,8 @@ public class UpdateNodeRequest {
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
     public String getEmoji() { return emoji; }
     public void setEmoji(String emoji) { this.emoji = emoji; }
     public String getBranchText() { return branchText; }
