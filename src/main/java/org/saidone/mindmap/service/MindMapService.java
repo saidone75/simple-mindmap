@@ -44,10 +44,12 @@ public class MindMapService {
 
     private final MindMapRepository mindMapRepository;
     private final NodeRepository nodeRepository;
+    private final WikimediaImageSearchService wikimediaImageSearchService;
 
-    public MindMapService(MindMapRepository mindMapRepository, NodeRepository nodeRepository) {
+    public MindMapService(MindMapRepository mindMapRepository, NodeRepository nodeRepository, WikimediaImageSearchService wikimediaImageSearchService) {
         this.mindMapRepository = mindMapRepository;
         this.nodeRepository = nodeRepository;
+        this.wikimediaImageSearchService = wikimediaImageSearchService;
     }
 
     public List<MindMap> findAll() {
@@ -145,6 +147,11 @@ public class MindMapService {
 
     @Transactional
     public MindMap createFromGeneratedMap(MindMapDto generatedMap) {
+        return createFromGeneratedMap(generatedMap, false);
+    }
+
+    @Transactional
+    public MindMap createFromGeneratedMap(MindMapDto generatedMap, boolean searchWikimediaImages) {
         String title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
                 ? "Mappa generata con AI"
                 : generatedMap.getTitle().trim();
@@ -175,7 +182,11 @@ public class MindMapService {
             );
             node.setEmoji(normalizeNodeEmoji(nodeDto.getEmoji()));
             node.setBranchText(normalizeBranchText(nodeDto.getBranchText()));
-            node.setImageUri(normalizeImageUri(nodeDto.getImageUri()));
+            if (searchWikimediaImages) {
+                node.setImageUri(normalizeImageUri(wikimediaImageSearchService.searchImage(normalizeImageKeywords(nodeDto))));
+            } else {
+                node.setImageUri(normalizeImageUri(nodeDto.getImageUri()));
+            }
             nodeRepository.save(node);
 
             createdNodeIdsByIndex.add(node.getId());
@@ -283,6 +294,20 @@ public class MindMapService {
         node.setNodeWidth(null);
         node.setNodeHeight(null);
         return nodeRepository.save(node);
+    }
+
+    private String[] normalizeImageKeywords(NodeDto nodeDto) {
+        if (nodeDto == null) return new String[0];
+        if (nodeDto.getImageKeywords() != null && nodeDto.getImageKeywords().length > 0) {
+            return java.util.Arrays.stream(nodeDto.getImageKeywords())
+                    .filter(java.util.Objects::nonNull)
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .limit(4)
+                    .toArray(String[]::new);
+        }
+        String text = nodeDto.getText() == null ? "" : nodeDto.getText().trim();
+        return text.isEmpty() ? new String[0] : text.split("\\s+");
     }
 
     private MindMap getMap(Long id) {
