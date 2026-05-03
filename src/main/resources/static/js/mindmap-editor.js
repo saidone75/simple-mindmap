@@ -1173,7 +1173,7 @@ function applyOrganicLayout() {
             const share = getSubtreeWeight(child.id, childrenMap) / Math.max(totalWeight, 1);
             const span = (endAngle - startAngle) * share;
             const angle = cursor + span / 2;
-            const size = isSketchPreset() ? getSketchNodeSize(child) : getNodeSize(child);
+            const size = getLayoutNodeSize(child);
             const jitter = isSketchPreset() ? (Math.sin(child.id * 11.13) * 12) : 0;
             child.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * radius) + jitter - (size.width / 2));
             child.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * radius) + jitter - (size.height / 2));
@@ -1184,17 +1184,18 @@ function applyOrganicLayout() {
 
     if (roots.length === 1) {
         const root = roots[0];
-        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        const rootSize = getLayoutNodeSize(root);
         root.x = Math.round(MAP_CENTER_X - rootSize.width / 2);
         root.y = Math.round(MAP_CENTER_Y - rootSize.height / 2);
         placeChildren(root, -Math.PI + 0.2, Math.PI - 0.2, 1);
+        resolveNodeOverlaps(nodes);
         return;
     }
 
     const step = (Math.PI * 2) / roots.length;
     roots.forEach((root, index) => {
         const angle = (index * step) - Math.PI / 2;
-        const rootSize = isSketchPreset() ? getSketchNodeSize(root) : getNodeSize(root);
+        const rootSize = getLayoutNodeSize(root);
         root.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * 120) - rootSize.width / 2);
         root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 120) - rootSize.height / 2);
         placeChildren(root, angle - step / 2, angle + step / 2, 1);
@@ -1203,18 +1204,22 @@ function applyOrganicLayout() {
     resolveNodeOverlaps(nodes);
 }
 
+function getLayoutNodeSize(node) {
+    return isSketchPreset() ? getSketchNodeSize(node) : getNodeSize(node);
+}
+
 function resolveNodeOverlaps(nodes) {
     const padding = 28;
-    for (let iteration = 0; iteration < 45; iteration += 1) {
+    for (let iteration = 0; iteration < 80; iteration += 1) {
         let moved = false;
         for (let i = 0; i < nodes.length; i += 1) {
             const first = nodes[i];
-            const firstSize = getNodeSize(first);
+            const firstSize = getLayoutNodeSize(first);
             const firstCenterX = first.x + (firstSize.width / 2);
             const firstCenterY = first.y + (firstSize.height / 2);
             for (let j = i + 1; j < nodes.length; j += 1) {
                 const second = nodes[j];
-                const secondSize = getNodeSize(second);
+                const secondSize = getLayoutNodeSize(second);
                 const secondCenterX = second.x + (secondSize.width / 2);
                 const secondCenterY = second.y + (secondSize.height / 2);
 
@@ -1223,25 +1228,19 @@ function resolveNodeOverlaps(nodes) {
 
                 if (overlapX > 0 && overlapY > 0) {
                     moved = true;
-                    if (overlapX < overlapY) {
-                        const shiftX = overlapX / 2;
-                        if (firstCenterX <= secondCenterX) {
-                            first.x -= Math.round(shiftX);
-                            second.x += Math.round(shiftX);
-                        } else {
-                            first.x += Math.round(shiftX);
-                            second.x -= Math.round(shiftX);
-                        }
-                    } else {
-                        const shiftY = overlapY / 2;
-                        if (firstCenterY <= secondCenterY) {
-                            first.y -= Math.round(shiftY);
-                            second.y += Math.round(shiftY);
-                        } else {
-                            first.y += Math.round(shiftY);
-                            second.y -= Math.round(shiftY);
-                        }
-                    }
+                    const deltaX = secondCenterX - firstCenterX;
+                    const deltaY = secondCenterY - firstCenterY;
+                    const fallbackX = ((first.id * 37 + second.id * 19) % 2 === 0) ? 1 : -1;
+                    const fallbackY = ((first.id * 13 + second.id * 17) % 2 === 0) ? 1 : -1;
+                    const directionX = Math.abs(deltaX) < 0.001 ? fallbackX : Math.sign(deltaX);
+                    const directionY = Math.abs(deltaY) < 0.001 ? fallbackY : Math.sign(deltaY);
+                    const shiftX = Math.max(1, Math.round((overlapX / 2) * directionX));
+                    const shiftY = Math.max(1, Math.round((overlapY / 2) * directionY));
+
+                    first.x -= shiftX;
+                    second.x += shiftX;
+                    first.y -= shiftY;
+                    second.y += shiftY;
                 }
             }
         }
