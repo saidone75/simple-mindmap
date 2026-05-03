@@ -139,7 +139,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
                 - branchText deve essere una breve nota utile (non usare qui la descrizione principale).
                 - imageUri deve essere sempre stringa vuota.
-                - imageKeywords deve contenere 3 o 4 parole chiave brevi e pertinenti per cercare immagini su Wikimedia per il nodo.
+                - imageKeywords deve contenere 2-6 keyword in inglese, separate da virgola, in ordine di importanza (la più importante per prima), pensate per cercare immagini su Wikimedia Commons.
                 - parentId: null solo per il nodo principale (primo elemento).
                 - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
                 - Struttura gerarchica obbligatoria: radice -> figli -> nipoti -> livelli successivi.
