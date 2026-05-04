@@ -24,6 +24,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 - ✅ Creazione mappa rapida
 - ✅ Nodo principale automatico
 - ✅ Template pronti (Italiano, Scienze, Storia, Geografia)
+- ✅ Generazione mappe anche con AI
 - ✅ Aggiunta nodi principali e nodi figli
 - ✅ Drag & drop dei nodi
 - ✅ Modifica testo, colore e dimensione font
