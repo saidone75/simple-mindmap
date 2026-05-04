@@ -1077,6 +1077,25 @@ function clampImageSize(value) {
     return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, Math.round(value)));
 }
 
+function handleCanvasWheelZoom(event) {
+    if (!zoomInput) return;
+    if (!event.ctrlKey && !event.metaKey && event.deltaY === 0) return;
+    if (!event.ctrlKey && !event.metaKey) {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.closest("#mindmap-canvas")) {
+            return;
+        }
+    }
+
+    event.preventDefault();
+    const step = event.deltaY < 0 ? 5 : -5;
+    const currentZoom = Number(zoomInput.value) || 100;
+    const nextZoom = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, currentZoom + step));
+    if (nextZoom === currentZoom) return;
+    zoomInput.value = String(nextZoom);
+    applyCanvasViewport();
+}
+
 function ensureNodeImageSize(node) {
     node.imageWidth = clampImageSize(Number(node.imageWidth));
     node.imageHeight = clampImageSize(Number(node.imageHeight));
@@ -1153,6 +1172,10 @@ document.getElementById("delete-node-btn").addEventListener("click", async () =>
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
 if (zoomInput) {
     zoomInput.addEventListener("input", () => applyCanvasViewport());
+}
+
+if (canvasPanel) {
+    canvasPanel.addEventListener("wheel", handleCanvasWheelZoom, { passive: false });
 }
 
 autoLayoutBtn.addEventListener("click", async () => {
