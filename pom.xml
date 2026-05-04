@@ -30,7 +30,7 @@
 
     <groupId>com.example</groupId>
     <artifactId>mindmap-thymeleaf-app</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <name>mindmap-thymeleaf-app</name>
     <description>Applicazione Spring Boot + Thymeleaf per creare mappe mentali</description>
 
