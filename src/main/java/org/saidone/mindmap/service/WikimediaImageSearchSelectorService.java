@@ -24,6 +24,8 @@ import lombok.val;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.Semaphore;
+
 @Service
 @Primary
 @RequiredArgsConstructor
@@ -32,9 +34,11 @@ public class WikimediaImageSearchSelectorService implements WikimediaImageSearch
 
     private static final String MODE_SIMPLE = "simple";
     private static final String MODE_ADVANCED = "advanced";
+    private static final int MAX_CONCURRENT_SEARCHES = 3;
 
     private final WikimediaSimpleImageSearchService simpleImageFinderService;
     private final WikimediaSemanticImageSearchService advancedImageFinderService;
+    private final Semaphore searchSemaphore = new Semaphore(MAX_CONCURRENT_SEARCHES, true);
 
     @Override
     public String searchImage(String[] keywords) {
@@ -43,11 +47,23 @@ public class WikimediaImageSearchSelectorService implements WikimediaImageSearch
 
     @Override
     public String searchImage(String[] keywords, String preferredMode) {
+        try {
+            searchSemaphore.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Ricerca immagine Wikimedia interrotta in attesa di slot disponibile: {}", e.getMessage());
+            return null;
+        }
+
+        try {
         val mode = resolveMode(preferredMode);
         if (MODE_SIMPLE.equals(mode)) {
             return simpleImageFinderService.searchImage(keywords);
         }
         return advancedImageFinderService.searchImage(keywords);
+        } finally {
+            searchSemaphore.release();
+        }
     }
 
     private String resolveMode(String preferredMode) {
