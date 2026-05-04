@@ -48,6 +48,10 @@ const state = {
     contextMenu: null,
     hoveredNodeId: null,
     hoverHideTimer: null,
+    undoStack: [],
+    redoStack: [],
+    interactionSnapshot: null,
+    isApplyingHistory: false,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -72,6 +76,65 @@ const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
 const canvasPanel = svg.closest(".canvas-panel");
 
+
+function snapshotEditorState() {
+    return {
+        map: structuredClone(state.map),
+        selectedNodeId: state.selectedNodeId
+    };
+}
+
+function restoreEditorState(snapshot) {
+    state.isApplyingHistory = true;
+    state.map = structuredClone(snapshot.map);
+    state.selectedNodeId = snapshot.selectedNodeId;
+    state.isApplyingHistory = false;
+    if (state.selectedNodeId) {
+        selectNode(state.selectedNodeId);
+    } else {
+        render();
+    }
+}
+
+function pushUndoSnapshot() {
+    if (state.isApplyingHistory) return;
+    state.undoStack.push(snapshotEditorState());
+    if (state.undoStack.length > 100) state.undoStack.shift();
+    state.redoStack = [];
+}
+
+function beginInteractionSnapshot() {
+    if (state.interactionSnapshot || state.isApplyingHistory) return;
+    state.interactionSnapshot = snapshotEditorState();
+}
+
+function commitInteractionSnapshot() {
+    if (!state.interactionSnapshot || state.isApplyingHistory) return;
+    state.undoStack.push(state.interactionSnapshot);
+    if (state.undoStack.length > 100) state.undoStack.shift();
+    state.redoStack = [];
+    state.interactionSnapshot = null;
+}
+
+function clearInteractionSnapshot() {
+    state.interactionSnapshot = null;
+}
+
+function undoChange() {
+    if (!state.undoStack.length) return;
+    const current = snapshotEditorState();
+    const previous = state.undoStack.pop();
+    state.redoStack.push(current);
+    restoreEditorState(previous);
+}
+
+function redoChange() {
+    if (!state.redoStack.length) return;
+    const current = snapshotEditorState();
+    const next = state.redoStack.pop();
+    state.undoStack.push(current);
+    restoreEditorState(next);
+}
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
 }
@@ -745,6 +808,7 @@ function selectNode(nodeId) {
 function startDrag(event) {
     if (state.resize) return;
     const nodeId = Number(event.currentTarget.dataset.id);
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const node = getNodeById(nodeId);
     if (!node) return;
@@ -764,6 +828,7 @@ function startImageResize(event) {
     const node = getNodeById(nodeId);
     if (!node) return;
 
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const nodeSize = getNodeSize(node);
     const bounds = getNodeImageBounds(node, nodeSize.width);
@@ -785,6 +850,7 @@ function startNodeResize(event) {
     const node = getNodeById(nodeId);
     if (!node) return;
 
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const size = getNodeSize(node);
     const point = toSvgPoint(event);
@@ -839,6 +905,9 @@ document.addEventListener("mousemove", event => {
 });
 
 document.addEventListener("mouseup", () => {
+    if (state.drag || state.resize) {
+        commitInteractionSnapshot();
+    }
     state.drag = null;
     state.resize = null;
 });
@@ -851,6 +920,7 @@ document.addEventListener("click", event => {
 document.getElementById("save-node-btn").addEventListener("click", async () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     applyFormToNode(node);
     render();
     await saveNode(node);
@@ -859,6 +929,7 @@ document.getElementById("save-node-btn").addEventListener("click", async () => {
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     if (hasNodeImage(node)) {
         node.emoji = "";
@@ -872,6 +943,7 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
 
 document.getElementById("clear-image-btn").addEventListener("click", () => {
     imageUrlInput.value = "";
+    pushUndoSnapshot();
     updateImagePreview("");
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -895,6 +967,7 @@ imageUploadInput.addEventListener("change", event => {
         state.pendingImageNodeId = null;
         event.target.value = "";
         if (!node) return;
+        pushUndoSnapshot();
         imageUrlInput.value = dataUrl;
         updateImagePreview(dataUrl);
         node.imageUri = dataUrl;
@@ -1018,6 +1091,7 @@ function updateImageSizeLabels() {
 }
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
+    pushUndoSnapshot();
     const node = await createNode({
         parentId: null,
         text: "Nuovo nodo",
@@ -1059,6 +1133,7 @@ if (zoomInput) {
 }
 
 autoLayoutBtn.addEventListener("click", async () => {
+    pushUndoSnapshot();
     applyOrganicLayout();
     render();
     focusCanvasOnContent();
@@ -1087,6 +1162,7 @@ async function saveNode(node) {
 function queueAutoSubmitSelectedNode() {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     applyFormToNode(node);
     render();
     scheduleAutosave(node);
@@ -1257,6 +1333,7 @@ async function persistAllNodePositions() {
 async function addChildNode(parentId) {
     const parent = getNodeById(parentId);
     if (!parent) return;
+    pushUndoSnapshot();
     const node = await createNode({
         parentId: parent.id,
         text: "Nuovo nodo",
@@ -1290,6 +1367,7 @@ async function deleteNodeWithChecks(nodeId) {
         return;
     }
     if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
+    pushUndoSnapshot();
     await flushAutosave();
     await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
     state.map = await fetchMap();
@@ -1309,6 +1387,7 @@ async function quickEditBranchText(nodeId) {
     if (!node) return;
     const value = window.prompt("Inserisci il testo del ramo:", node.branchText || "");
     if (value === null) return;
+    pushUndoSnapshot();
     node.branchText = sanitizePlainText(value.trim());
     selectNode(nodeId);
     render();
@@ -1320,6 +1399,7 @@ async function quickEditEmoji(nodeId) {
     if (!node) return;
     const value = window.prompt("Inserisci una emoji per il nodo:", node.emoji || "");
     if (value === null) return;
+    pushUndoSnapshot();
     node.emoji = normalizeNodeEmoji(value);
     if (node.emoji) {
         node.imageUri = null;
@@ -1368,6 +1448,24 @@ function isTypingTarget(target) {
 }
 
 document.addEventListener("keydown", async event => {
+    const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z";
+    const isRedoShortcut = ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y")
+        || ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "z");
+
+    if (isUndoShortcut) {
+        event.preventDefault();
+        clearInteractionSnapshot();
+        undoChange();
+        return;
+    }
+
+    if (isRedoShortcut) {
+        event.preventDefault();
+        clearInteractionSnapshot();
+        redoChange();
+        return;
+    }
+
     if (isTypingTarget(event.target)) return;
     if (!state.selectedNodeId) return;
     const node = getNodeById(state.selectedNodeId);
