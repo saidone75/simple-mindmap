@@ -60,6 +60,8 @@ const descriptionInput = document.getElementById("node-description");
 const colorInput = document.getElementById("node-color");
 const branchColorInput = document.getElementById("branch-color");
 const branchStyleInput = document.getElementById("branch-style");
+const branchWidthInput = document.getElementById("branch-width");
+const branchCurveInput = document.getElementById("branch-curve");
 const fontSizeInput = document.getElementById("node-font-size");
 const imageUrlInput = document.getElementById("node-image-url");
 const imageUploadInput = document.getElementById("node-image-upload");
@@ -254,7 +256,9 @@ function applyBranchStyle(path, node, depth = 1) {
     const strokeColor = node.branchColor || "#7c8a9a";
 
     path.setAttribute("stroke", strokeColor);
-    const baseWidth = Math.max(2, 6 - Math.min(depth, 4));
+    const configuredWidth = Number(node.branchWidth);
+    const depthWidth = Math.max(2, 6 - Math.min(depth, 4));
+    const baseWidth = Number.isFinite(configuredWidth) && configuredWidth > 0 ? configuredWidth : depthWidth;
     path.setAttribute("stroke-width", String(baseWidth));
     path.removeAttribute("stroke-dasharray");
     path.removeAttribute("marker-end");
@@ -268,26 +272,32 @@ function applyBranchStyle(path, node, depth = 1) {
             path.setAttribute("stroke-dasharray", "2 8");
             path.setAttribute("stroke-linecap", "round");
             break;
-        case "BOLD":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            break;
-        case "DOUBLE":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            path.setAttribute("stroke-dasharray", "1 2");
-            break;
-        case "ZIGZAG":
-            path.setAttribute("stroke-dasharray", "14 5 3 5");
-            break;
-        case "ARROW":
-            path.setAttribute("marker-end", "url(#arrow-head)");
-            break;
-        case "BOLD_ARROW":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            path.setAttribute("marker-end", "url(#arrow-head-bold)");
-            break;
         default:
             break;
     }
+}
+
+function buildConnectorPath(node, x1, y1, x2, y2) {
+    const curveType = (node.branchCurve || "CUBIC").toUpperCase();
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    if (curveType === "QUADRATIC") {
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    }
+
+    const distance = Math.hypot(dx, dy);
+    const horizontalFactor = Math.min(0.52, Math.max(0.34, distance / 900));
+    const direction = x2 >= x1 ? 1 : -1;
+    const arcBend = Math.min(120, Math.max(28, distance * 0.16));
+
+    const c1x = x1 + (dx * horizontalFactor);
+    const c1y = y1 + (dy * 0.18) - (arcBend * direction);
+    const c2x = x2 - (dx * horizontalFactor);
+    const c2y = y2 - (dy * 0.18) - (arcBend * direction);
+    return `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 }
 
 function render() {
@@ -307,14 +317,9 @@ function render() {
                 const y1 = parent.y + parentSize.height / 2;
                 const x2 = node.x + nodeSize.width / 2;
                 const y2 = node.y + nodeSize.height / 2;
-                const cx = (x1 + x2) / 2;
                 const depth = depthMap.get(node.id) || 1;
-                const bend = Math.max(22, 44 - depth * 4);
-                const direction = x2 >= x1 ? -1 : 1;
-                const cy = (y1 + y2) / 2 + (direction * bend);
-
                 path.setAttribute("class", "connector");
-                path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+                path.setAttribute("d", buildConnectorPath(node, x1, y1, x2, y2));
                 applyBranchStyle(path, node, depth);
                 if (sketchPreset) {
                     path.classList.add("connector-sketch");
@@ -322,7 +327,7 @@ function render() {
                     path.setAttribute("stroke-width", String(Math.max(2.5, 5.5 - Math.min(depth, 3))));
                 }
                 svg.appendChild(path);
-                renderBranchLabel(node, cx, cy, x1, y1, x2, y2);
+                renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);
             }
         }
     }
@@ -795,6 +800,8 @@ function selectNode(nodeId) {
     colorInput.value = node.color || "#FFD966";
     branchColorInput.value = node.branchColor || "#7c8a9a";
     branchStyleInput.value = node.branchStyle || "SOLID";
+    branchWidthInput.value = clampBranchWidth(Number(node.branchWidth));
+    branchCurveInput.value = (node.branchCurve || "CUBIC").toUpperCase();
     fontSizeInput.value = node.fontSize || 18;
     imageUrlInput.value = node.imageUri || "";
     const imageSize = getNodeImageSize(node);
@@ -1000,7 +1007,7 @@ imageHeightInput.addEventListener("input", () => {
     render();
 });
 
-const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
+const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, branchWidthInput, branchCurveInput, fontSizeInput, imageUrlInput];
 for (const field of autosubmitFields) {
     const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
@@ -1025,6 +1032,8 @@ function applyFormToNode(node) {
     node.color = colorInput.value;
     node.branchColor = branchColorInput.value;
     node.branchStyle = branchStyleInput.value;
+    node.branchWidth = clampBranchWidth(Number(branchWidthInput.value));
+    node.branchCurve = (branchCurveInput.value || "CUBIC").toUpperCase();
     node.fontSize = Number(fontSizeInput.value);
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     node.imageWidth = clampImageSize(Number(imageWidthInput.value));
@@ -1049,6 +1058,11 @@ function normalizeImageUri(value) {
         return null;
     }
     return null;
+}
+
+function clampBranchWidth(value) {
+    if (!Number.isFinite(value) || value <= 0) return 4;
+    return Math.min(12, Math.max(1, Math.round(value)));
 }
 
 function clampImageSize(value) {
@@ -1105,6 +1119,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
         branchStyle: "SOLID",
+        branchWidth: 4,
+        branchCurve: "CUBIC",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
@@ -1361,6 +1377,8 @@ async function addChildNode(parentId) {
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
         branchStyle: "SOLID",
+        branchWidth: 4,
+        branchCurve: "CUBIC",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
