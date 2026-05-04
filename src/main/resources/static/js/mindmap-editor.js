@@ -35,6 +35,8 @@ const BASE_CANVAS_HEIGHT = 900;
 const CANVAS_PADDING = 180;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
+const DEFAULT_ROOT_COLOR = "#D9D2E9";
+const DEFAULT_CHILD_COLOR = "#9FC5E8";
 
 const state = {
     map: structuredClone(initialMap),
@@ -187,6 +189,11 @@ function getSketchNodeSize(node) {
     const width = Math.max(120, (longest * (fontSize * 0.65)) + 36);
     const height = Math.max(56, (lines.length * (fontSize * 1.2)) + 28);
     return { width, height };
+}
+
+
+function getNodeColor(node) {
+    return node.color || (node.parentId == null ? DEFAULT_ROOT_COLOR : DEFAULT_CHILD_COLOR);
 }
 
 function buildDepthMap(nodes) {
@@ -347,7 +354,7 @@ function render() {
         rect.setAttribute("ry", sketchPreset ? 16 : depth === 0 ? 10 : 20);
         rect.setAttribute("width", width);
         rect.setAttribute("height", height);
-        rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : (node.color || "#FFD966"));
+        rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : getNodeColor(node));
         rect.setAttribute("stroke", sketchPreset ? "transparent" : "#546170");
         rect.setAttribute("stroke-width", sketchPreset ? "0" : "1.5");
         group.appendChild(rect);
@@ -797,7 +804,7 @@ function selectNode(nodeId) {
     descriptionInput.value = node.description || "";
     nodeEmojiInput.value = node.emoji || "";
     branchTextInput.value = node.branchText || "";
-    colorInput.value = node.color || "#FFD966";
+    colorInput.value = getNodeColor(node);
     branchColorInput.value = node.branchColor || "#7c8a9a";
     branchStyleInput.value = node.branchStyle || "SOLID";
     branchWidthInput.value = clampBranchWidth(Number(node.branchWidth));
@@ -1114,7 +1121,7 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         branchText: null,
         x: 180 + Math.round(Math.random() * 700),
         y: 120 + Math.round(Math.random() * 500),
-        color: "#D9D2E9",
+        color: DEFAULT_ROOT_COLOR,
         fontSize: 18,
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
@@ -1285,16 +1292,25 @@ function applyOrganicLayout() {
         return;
     }
 
-    const step = (Math.PI * 2) / roots.length;
-    roots.forEach((root, index) => {
-        const angle = (index * step) - Math.PI / 2;
-        const rootSize = getLayoutNodeSize(root);
-        root.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * 120) - rootSize.width / 2);
-        root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 120) - rootSize.height / 2);
-        placeChildren(root, angle - step / 2, angle + step / 2, 1);
-    });
+    const [centerRoot, ...otherRoots] = roots;
+    const centerRootSize = getLayoutNodeSize(centerRoot);
+    centerRoot.x = Math.round(MAP_CENTER_X - centerRootSize.width / 2);
+    centerRoot.y = Math.round(MAP_CENTER_Y - centerRootSize.height / 2);
+    placeChildren(centerRoot, -Math.PI + 0.2, Math.PI - 0.2, 1);
+
+    if (otherRoots.length) {
+        const step = (Math.PI * 2) / otherRoots.length;
+        otherRoots.forEach((root, index) => {
+            const angle = (index * step) - Math.PI / 2;
+            const rootSize = getLayoutNodeSize(root);
+            root.x = Math.round(MAP_CENTER_X + (Math.cos(angle) * 280) - rootSize.width / 2);
+            root.y = Math.round(MAP_CENTER_Y + (Math.sin(angle) * 280) - rootSize.height / 2);
+            placeChildren(root, angle - step / 2, angle + step / 2, 1);
+        });
+    }
 
     resolveNodeOverlaps(nodes);
+    keepRootCentered(centerRoot, nodes);
 }
 
 function keepRootCentered(root, nodes) {
@@ -1372,7 +1388,7 @@ async function addChildNode(parentId) {
         branchText: null,
         x: parent.x + 220,
         y: parent.y + 90,
-        color: "#9FC5E8",
+        color: DEFAULT_CHILD_COLOR,
         fontSize: 18,
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
