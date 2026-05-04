@@ -1265,6 +1265,7 @@ function applyOrganicLayout() {
         root.y = Math.round(MAP_CENTER_Y - rootSize.height / 2);
         placeChildren(root, -Math.PI + 0.2, Math.PI - 0.2, 1);
         resolveNodeOverlaps(nodes);
+        keepRootCentered(root, nodes);
         return;
     }
 
@@ -1278,6 +1279,19 @@ function applyOrganicLayout() {
     });
 
     resolveNodeOverlaps(nodes);
+}
+
+function keepRootCentered(root, nodes) {
+    const rootSize = getLayoutNodeSize(root);
+    const targetX = Math.round(MAP_CENTER_X - rootSize.width / 2);
+    const targetY = Math.round(MAP_CENTER_Y - rootSize.height / 2);
+    const deltaX = targetX - root.x;
+    const deltaY = targetY - root.y;
+    if (!deltaX && !deltaY) return;
+    for (const node of nodes) {
+        node.x += deltaX;
+        node.y += deltaY;
+    }
 }
 
 function getLayoutNodeSize(node) {
