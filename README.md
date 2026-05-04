@@ -1,4 +1,4 @@
-# 🧠✨ Alice's Simple Simple MindMap
+# 🧠✨ Alice's 1Simple MindMap
 
 Benvenuto in **Alice's Simple MindMap**, una web app leggera e immediata per creare mappe mentali in pochi click.
 Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno stack solido e moderno.
@@ -24,6 +24,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 - ✅ Creazione mappa rapida
 - ✅ Nodo principale automatico
 - ✅ Template pronti (Italiano, Scienze, Storia, Geografia)
+- ✅ Generazione mappe anche con AI
 - ✅ Aggiunta nodi principali e nodi figli
 - ✅ Drag & drop dei nodi
 - ✅ Modifica testo, colore e dimensione font

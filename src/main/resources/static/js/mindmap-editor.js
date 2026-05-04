@@ -48,6 +48,10 @@ const state = {
     contextMenu: null,
     hoveredNodeId: null,
     hoverHideTimer: null,
+    undoStack: [],
+    redoStack: [],
+    interactionSnapshot: null,
+    isApplyingHistory: false,
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -56,6 +60,8 @@ const descriptionInput = document.getElementById("node-description");
 const colorInput = document.getElementById("node-color");
 const branchColorInput = document.getElementById("branch-color");
 const branchStyleInput = document.getElementById("branch-style");
+const branchWidthInput = document.getElementById("branch-width");
+const branchCurveInput = document.getElementById("branch-curve");
 const fontSizeInput = document.getElementById("node-font-size");
 const imageUrlInput = document.getElementById("node-image-url");
 const imageUploadInput = document.getElementById("node-image-upload");
@@ -72,6 +78,65 @@ const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
 const canvasPanel = svg.closest(".canvas-panel");
 
+
+function snapshotEditorState() {
+    return {
+        map: structuredClone(state.map),
+        selectedNodeId: state.selectedNodeId
+    };
+}
+
+function restoreEditorState(snapshot) {
+    state.isApplyingHistory = true;
+    state.map = structuredClone(snapshot.map);
+    state.selectedNodeId = snapshot.selectedNodeId;
+    state.isApplyingHistory = false;
+    if (state.selectedNodeId) {
+        selectNode(state.selectedNodeId);
+    } else {
+        render();
+    }
+}
+
+function pushUndoSnapshot() {
+    if (state.isApplyingHistory) return;
+    state.undoStack.push(snapshotEditorState());
+    if (state.undoStack.length > 100) state.undoStack.shift();
+    state.redoStack = [];
+}
+
+function beginInteractionSnapshot() {
+    if (state.interactionSnapshot || state.isApplyingHistory) return;
+    state.interactionSnapshot = snapshotEditorState();
+}
+
+function commitInteractionSnapshot() {
+    if (!state.interactionSnapshot || state.isApplyingHistory) return;
+    state.undoStack.push(state.interactionSnapshot);
+    if (state.undoStack.length > 100) state.undoStack.shift();
+    state.redoStack = [];
+    state.interactionSnapshot = null;
+}
+
+function clearInteractionSnapshot() {
+    state.interactionSnapshot = null;
+}
+
+function undoChange() {
+    if (!state.undoStack.length) return;
+    const current = snapshotEditorState();
+    const previous = state.undoStack.pop();
+    state.redoStack.push(current);
+    restoreEditorState(previous);
+}
+
+function redoChange() {
+    if (!state.redoStack.length) return;
+    const current = snapshotEditorState();
+    const next = state.redoStack.pop();
+    state.undoStack.push(current);
+    restoreEditorState(next);
+}
 function getNodeById(id) {
     return state.map.nodes.find(n => n.id === id);
 }
@@ -191,7 +256,9 @@ function applyBranchStyle(path, node, depth = 1) {
     const strokeColor = node.branchColor || "#7c8a9a";
 
     path.setAttribute("stroke", strokeColor);
-    const baseWidth = Math.max(2, 6 - Math.min(depth, 4));
+    const configuredWidth = Number(node.branchWidth);
+    const depthWidth = Math.max(2, 6 - Math.min(depth, 4));
+    const baseWidth = Number.isFinite(configuredWidth) && configuredWidth > 0 ? configuredWidth : depthWidth;
     path.setAttribute("stroke-width", String(baseWidth));
     path.removeAttribute("stroke-dasharray");
     path.removeAttribute("marker-end");
@@ -205,26 +272,32 @@ function applyBranchStyle(path, node, depth = 1) {
             path.setAttribute("stroke-dasharray", "2 8");
             path.setAttribute("stroke-linecap", "round");
             break;
-        case "BOLD":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            break;
-        case "DOUBLE":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            path.setAttribute("stroke-dasharray", "1 2");
-            break;
-        case "ZIGZAG":
-            path.setAttribute("stroke-dasharray", "14 5 3 5");
-            break;
-        case "ARROW":
-            path.setAttribute("marker-end", "url(#arrow-head)");
-            break;
-        case "BOLD_ARROW":
-            path.setAttribute("stroke-width", String(baseWidth + 2));
-            path.setAttribute("marker-end", "url(#arrow-head-bold)");
-            break;
         default:
             break;
     }
+}
+
+function buildConnectorPath(node, x1, y1, x2, y2) {
+    const curveType = (node.branchCurve || "CUBIC").toUpperCase();
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    if (curveType === "QUADRATIC") {
+        const cx = (x1 + x2) / 2;
+        const cy = (y1 + y2) / 2;
+        return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+    }
+
+    const distance = Math.hypot(dx, dy);
+    const horizontalFactor = Math.min(0.52, Math.max(0.34, distance / 900));
+    const direction = x2 >= x1 ? 1 : -1;
+    const arcBend = Math.min(120, Math.max(28, distance * 0.16));
+
+    const c1x = x1 + (dx * horizontalFactor);
+    const c1y = y1 + (dy * 0.18) - (arcBend * direction);
+    const c2x = x2 - (dx * horizontalFactor);
+    const c2y = y2 - (dy * 0.18) - (arcBend * direction);
+    return `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 }
 
 function render() {
@@ -244,14 +317,9 @@ function render() {
                 const y1 = parent.y + parentSize.height / 2;
                 const x2 = node.x + nodeSize.width / 2;
                 const y2 = node.y + nodeSize.height / 2;
-                const cx = (x1 + x2) / 2;
                 const depth = depthMap.get(node.id) || 1;
-                const bend = Math.max(22, 44 - depth * 4);
-                const direction = x2 >= x1 ? -1 : 1;
-                const cy = (y1 + y2) / 2 + (direction * bend);
-
                 path.setAttribute("class", "connector");
-                path.setAttribute("d", `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+                path.setAttribute("d", buildConnectorPath(node, x1, y1, x2, y2));
                 applyBranchStyle(path, node, depth);
                 if (sketchPreset) {
                     path.classList.add("connector-sketch");
@@ -259,7 +327,7 @@ function render() {
                     path.setAttribute("stroke-width", String(Math.max(2.5, 5.5 - Math.min(depth, 3))));
                 }
                 svg.appendChild(path);
-                renderBranchLabel(node, cx, cy, x1, y1, x2, y2);
+                renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);
             }
         }
     }
@@ -732,6 +800,8 @@ function selectNode(nodeId) {
     colorInput.value = node.color || "#FFD966";
     branchColorInput.value = node.branchColor || "#7c8a9a";
     branchStyleInput.value = node.branchStyle || "SOLID";
+    branchWidthInput.value = clampBranchWidth(Number(node.branchWidth));
+    branchCurveInput.value = (node.branchCurve || "CUBIC").toUpperCase();
     fontSizeInput.value = node.fontSize || 18;
     imageUrlInput.value = node.imageUri || "";
     const imageSize = getNodeImageSize(node);
@@ -745,6 +815,7 @@ function selectNode(nodeId) {
 function startDrag(event) {
     if (state.resize) return;
     const nodeId = Number(event.currentTarget.dataset.id);
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const node = getNodeById(nodeId);
     if (!node) return;
@@ -764,6 +835,7 @@ function startImageResize(event) {
     const node = getNodeById(nodeId);
     if (!node) return;
 
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const nodeSize = getNodeSize(node);
     const bounds = getNodeImageBounds(node, nodeSize.width);
@@ -785,6 +857,7 @@ function startNodeResize(event) {
     const node = getNodeById(nodeId);
     if (!node) return;
 
+    beginInteractionSnapshot();
     selectNode(nodeId);
     const size = getNodeSize(node);
     const point = toSvgPoint(event);
@@ -839,6 +912,9 @@ document.addEventListener("mousemove", event => {
 });
 
 document.addEventListener("mouseup", () => {
+    if (state.drag || state.resize) {
+        commitInteractionSnapshot();
+    }
     state.drag = null;
     state.resize = null;
 });
@@ -851,6 +927,7 @@ document.addEventListener("click", event => {
 document.getElementById("save-node-btn").addEventListener("click", async () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     applyFormToNode(node);
     render();
     await saveNode(node);
@@ -859,6 +936,7 @@ document.getElementById("save-node-btn").addEventListener("click", async () => {
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     if (hasNodeImage(node)) {
         node.emoji = "";
@@ -872,6 +950,7 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
 
 document.getElementById("clear-image-btn").addEventListener("click", () => {
     imageUrlInput.value = "";
+    pushUndoSnapshot();
     updateImagePreview("");
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
@@ -895,6 +974,7 @@ imageUploadInput.addEventListener("change", event => {
         state.pendingImageNodeId = null;
         event.target.value = "";
         if (!node) return;
+        pushUndoSnapshot();
         imageUrlInput.value = dataUrl;
         updateImagePreview(dataUrl);
         node.imageUri = dataUrl;
@@ -927,7 +1007,7 @@ imageHeightInput.addEventListener("input", () => {
     render();
 });
 
-const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, fontSizeInput, imageUrlInput];
+const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, branchWidthInput, branchCurveInput, fontSizeInput, imageUrlInput];
 for (const field of autosubmitFields) {
     const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
@@ -952,6 +1032,8 @@ function applyFormToNode(node) {
     node.color = colorInput.value;
     node.branchColor = branchColorInput.value;
     node.branchStyle = branchStyleInput.value;
+    node.branchWidth = clampBranchWidth(Number(branchWidthInput.value));
+    node.branchCurve = (branchCurveInput.value || "CUBIC").toUpperCase();
     node.fontSize = Number(fontSizeInput.value);
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     node.imageWidth = clampImageSize(Number(imageWidthInput.value));
@@ -976,6 +1058,11 @@ function normalizeImageUri(value) {
         return null;
     }
     return null;
+}
+
+function clampBranchWidth(value) {
+    if (!Number.isFinite(value) || value <= 0) return 4;
+    return Math.min(12, Math.max(1, Math.round(value)));
 }
 
 function clampImageSize(value) {
@@ -1018,6 +1105,7 @@ function updateImageSizeLabels() {
 }
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
+    pushUndoSnapshot();
     const node = await createNode({
         parentId: null,
         text: "Nuovo nodo",
@@ -1031,6 +1119,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
         branchStyle: "SOLID",
+        branchWidth: 4,
+        branchCurve: "CUBIC",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
@@ -1059,6 +1149,7 @@ if (zoomInput) {
 }
 
 autoLayoutBtn.addEventListener("click", async () => {
+    pushUndoSnapshot();
     applyOrganicLayout();
     render();
     focusCanvasOnContent();
@@ -1087,6 +1178,7 @@ async function saveNode(node) {
 function queueAutoSubmitSelectedNode() {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
+    pushUndoSnapshot();
     applyFormToNode(node);
     render();
     scheduleAutosave(node);
@@ -1189,6 +1281,7 @@ function applyOrganicLayout() {
         root.y = Math.round(MAP_CENTER_Y - rootSize.height / 2);
         placeChildren(root, -Math.PI + 0.2, Math.PI - 0.2, 1);
         resolveNodeOverlaps(nodes);
+        keepRootCentered(root, nodes);
         return;
     }
 
@@ -1202,6 +1295,19 @@ function applyOrganicLayout() {
     });
 
     resolveNodeOverlaps(nodes);
+}
+
+function keepRootCentered(root, nodes) {
+    const rootSize = getLayoutNodeSize(root);
+    const targetX = Math.round(MAP_CENTER_X - rootSize.width / 2);
+    const targetY = Math.round(MAP_CENTER_Y - rootSize.height / 2);
+    const deltaX = targetX - root.x;
+    const deltaY = targetY - root.y;
+    if (!deltaX && !deltaY) return;
+    for (const node of nodes) {
+        node.x += deltaX;
+        node.y += deltaY;
+    }
 }
 
 function getLayoutNodeSize(node) {
@@ -1257,6 +1363,7 @@ async function persistAllNodePositions() {
 async function addChildNode(parentId) {
     const parent = getNodeById(parentId);
     if (!parent) return;
+    pushUndoSnapshot();
     const node = await createNode({
         parentId: parent.id,
         text: "Nuovo nodo",
@@ -1270,6 +1377,8 @@ async function addChildNode(parentId) {
         shape: "ROUNDED",
         branchColor: "#7c8a9a",
         branchStyle: "SOLID",
+        branchWidth: 4,
+        branchCurve: "CUBIC",
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
@@ -1290,6 +1399,7 @@ async function deleteNodeWithChecks(nodeId) {
         return;
     }
     if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
+    pushUndoSnapshot();
     await flushAutosave();
     await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
     state.map = await fetchMap();
@@ -1309,6 +1419,7 @@ async function quickEditBranchText(nodeId) {
     if (!node) return;
     const value = window.prompt("Inserisci il testo del ramo:", node.branchText || "");
     if (value === null) return;
+    pushUndoSnapshot();
     node.branchText = sanitizePlainText(value.trim());
     selectNode(nodeId);
     render();
@@ -1320,6 +1431,7 @@ async function quickEditEmoji(nodeId) {
     if (!node) return;
     const value = window.prompt("Inserisci una emoji per il nodo:", node.emoji || "");
     if (value === null) return;
+    pushUndoSnapshot();
     node.emoji = normalizeNodeEmoji(value);
     if (node.emoji) {
         node.imageUri = null;
@@ -1368,6 +1480,24 @@ function isTypingTarget(target) {
 }
 
 document.addEventListener("keydown", async event => {
+    const isUndoShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && event.key.toLowerCase() === "z";
+    const isRedoShortcut = ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y")
+        || ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "z");
+
+    if (isUndoShortcut) {
+        event.preventDefault();
+        clearInteractionSnapshot();
+        undoChange();
+        return;
+    }
+
+    if (isRedoShortcut) {
+        event.preventDefault();
+        clearInteractionSnapshot();
+        redoChange();
+        return;
+    }
+
     if (isTypingTarget(event.target)) return;
     if (!state.selectedNodeId) return;
     const node = getNodeById(state.selectedNodeId);

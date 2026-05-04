@@ -85,11 +85,15 @@
                 <option value="SOLID">Continuo</option>
                 <option value="DASHED">Tratteggiato</option>
                 <option value="DOTTED">Puntinato</option>
-                <option value="BOLD">Spesso</option>
-                <option value="DOUBLE">Doppio tratto</option>
-                <option value="ZIGZAG">Zig-zag</option>
-                <option value="ARROW">Con freccia</option>
-                <option value="BOLD_ARROW">Freccia spessa</option>
+            </select>
+
+            <label for="branch-width">Spessore ramo</label>
+            <input id="branch-width" type="range" min="1" max="12" value="4">
+
+            <label for="branch-curve">Tipo curva ramo</label>
+            <select id="branch-curve">
+                <option value="CUBIC">Cubica (molto morbida)</option>
+                <option value="QUADRATIC">Quadratica</option>
             </select>
 
             <label for="node-font-size">Grandezza testo</label>
