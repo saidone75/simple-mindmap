@@ -382,7 +382,6 @@ function render() {
             emoji.setAttribute("text-anchor", "middle");
             emoji.setAttribute("dominant-baseline", "middle");
             emoji.textContent = emojiValue;
-            emoji.addEventListener("mousedown", event => event.stopPropagation());
             emoji.addEventListener("click", async event => {
                 event.stopPropagation();
                 await quickEdit(node.id);
@@ -417,7 +416,6 @@ function render() {
             tspan.textContent = line.text || " ";
             text.appendChild(tspan);
         });
-        text.addEventListener("mousedown", event => event.stopPropagation());
         text.addEventListener("click", async event => {
             event.stopPropagation();
             await quickEdit(node.id);
