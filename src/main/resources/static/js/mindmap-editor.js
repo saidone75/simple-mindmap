@@ -1079,13 +1079,7 @@ function clampImageSize(value) {
 
 function handleCanvasWheelZoom(event) {
     if (!zoomInput) return;
-    if (!event.ctrlKey && !event.metaKey && event.deltaY === 0) return;
-    if (!event.ctrlKey && !event.metaKey) {
-        const target = event.target;
-        if (!(target instanceof Element) || !target.closest("#mindmap-canvas")) {
-            return;
-        }
-    }
+    if (!event.ctrlKey) return;
 
     event.preventDefault();
     const step = event.deltaY < 0 ? 5 : -5;
