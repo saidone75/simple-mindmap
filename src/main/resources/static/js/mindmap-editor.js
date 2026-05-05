@@ -36,6 +36,7 @@ const CANVAS_PADDING = 180;
 const INTERACTION_VIEWPORT_MAX_STEP = 12;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
+const DEFAULT_GRID_SIZE = 20;
 const DEFAULT_ROOT_COLOR = "#D9D2E9";
 const DEFAULT_CHILD_COLOR = "#9FC5E8";
 
@@ -44,6 +45,7 @@ const state = {
     selectedNodeId: null,
     drag: null,
     resize: null,
+    pan: null,
     interactionViewport: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
@@ -56,6 +58,11 @@ const state = {
     redoStack: [],
     interactionSnapshot: null,
     isApplyingHistory: false,
+    gridEnabled: false,
+    gridSize: DEFAULT_GRID_SIZE,
+    zoomAnimationFrame: null,
+    zoomAnimationTarget: null,
+    imageOverlayNodeId: null
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -80,8 +87,80 @@ const branchTextInput = document.getElementById("branch-text");
 const autoLayoutBtn = document.getElementById("auto-layout-btn");
 const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
+const gridEnabledInput = document.getElementById("grid-enabled");
+const gridSizeInput = document.getElementById("grid-size-control");
 const canvasPanel = svg.closest(".canvas-panel");
+const nodeEditorOverlay = document.getElementById("node-editor-overlay");
+const imageEditorOverlay = document.getElementById("image-editor-overlay");
 
+
+
+function updateNodeEditorOverlay(node) {
+    if (!nodeEditorOverlay || !canvasPanel || !node) return;
+    const nodeSize = getNodeSize(node);
+    const canvasRect = canvasPanel.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/\s+/).map(Number);
+    if (viewBox.length !== 4 || !viewBox.every(Number.isFinite) || svgRect.width <= 0 || svgRect.height <= 0) return;
+
+    const [viewX, viewY, viewWidth, viewHeight] = viewBox;
+    const scaleX = svgRect.width / viewWidth;
+    const scaleY = svgRect.height / viewHeight;
+    const nodeRightClientX = svgRect.left + ((node.x + nodeSize.width - viewX) * scaleX);
+    const nodeTopClientY = svgRect.top + ((node.y - viewY) * scaleY);
+
+    const defaultLeft = nodeRightClientX - canvasRect.left + 14 + canvasPanel.scrollLeft;
+    const defaultTop = nodeTopClientY - canvasRect.top + canvasPanel.scrollTop;
+    const maxLeft = canvasPanel.scrollLeft + canvasPanel.clientWidth - nodeEditorOverlay.offsetWidth - 12;
+    const maxTop = canvasPanel.scrollTop + canvasPanel.clientHeight - nodeEditorOverlay.offsetHeight - 12;
+
+    const left = Math.max(canvasPanel.scrollLeft + 12, Math.min(defaultLeft, maxLeft));
+    const top = Math.max(canvasPanel.scrollTop + 12, Math.min(defaultTop, maxTop));
+
+    nodeEditorOverlay.style.left = `${Math.round(left)}px`;
+    nodeEditorOverlay.style.top = `${Math.round(top)}px`;
+}
+
+function hideNodeEditorOverlay() {
+    if (!nodeEditorOverlay) return;
+    nodeEditorOverlay.classList.remove("visible");
+}
+
+function showImageEditorOverlay(node) {
+    if (!imageEditorOverlay || !node) return;
+    state.imageOverlayNodeId = node.id;
+    imageEditorOverlay.classList.add("visible");
+    updateImagePreview(node.imageUri || "");
+    updateImageEditorOverlay(node);
+}
+
+function hideImageEditorOverlay() {
+    if (!imageEditorOverlay) return;
+    state.imageOverlayNodeId = null;
+    imageEditorOverlay.classList.remove("visible");
+}
+
+function updateImageEditorOverlay(node) {
+    if (!imageEditorOverlay || !canvasPanel || !node) return;
+    const nodeSize = getNodeSize(node);
+    const canvasRect = canvasPanel.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/\s+/).map(Number);
+    if (viewBox.length !== 4 || !viewBox.every(Number.isFinite) || svgRect.width <= 0 || svgRect.height <= 0) return;
+    const [viewX, viewY, viewWidth, viewHeight] = viewBox;
+    const scaleX = svgRect.width / viewWidth;
+    const scaleY = svgRect.height / viewHeight;
+    const nodeRightClientX = svgRect.left + ((node.x + nodeSize.width - viewX) * scaleX);
+    const nodeTopClientY = svgRect.top + ((node.y - viewY) * scaleY);
+    const defaultLeft = nodeRightClientX - canvasRect.left + 14 + canvasPanel.scrollLeft;
+    const defaultTop = nodeTopClientY - canvasRect.top + canvasPanel.scrollTop;
+    const maxLeft = canvasPanel.scrollLeft + canvasPanel.clientWidth - imageEditorOverlay.offsetWidth - 12;
+    const maxTop = canvasPanel.scrollTop + canvasPanel.clientHeight - imageEditorOverlay.offsetHeight - 12;
+    const left = Math.max(canvasPanel.scrollLeft + 12, Math.min(defaultLeft, maxLeft));
+    const top = Math.max(canvasPanel.scrollTop + 12, Math.min(defaultTop, maxTop));
+    imageEditorOverlay.style.left = `${Math.round(left)}px`;
+    imageEditorOverlay.style.top = `${Math.round(top)}px`;
+}
 
 function snapshotEditorState() {
     return {
@@ -260,6 +339,40 @@ function renderConnectorDefs() {
     svg.appendChild(defs);
 }
 
+function renderGrid(viewport) {
+    if (!state.gridEnabled) return;
+    const gridGroup = document.createElementNS(SVG_NS, "g");
+    gridGroup.setAttribute("class", "grid-layer");
+    gridGroup.setAttribute("opacity", "0.28");
+    const gridSize = Math.max(5, Number(state.gridSize) || DEFAULT_GRID_SIZE);
+    const startX = Math.floor(viewport.x / gridSize) * gridSize;
+    const startY = Math.floor(viewport.y / gridSize) * gridSize;
+    const endX = viewport.x + viewport.width;
+    const endY = viewport.y + viewport.height;
+
+    for (let x = startX; x <= endX; x += gridSize) {
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", String(x));
+        line.setAttribute("y1", String(startY));
+        line.setAttribute("x2", String(x));
+        line.setAttribute("y2", String(endY));
+        line.setAttribute("stroke", "#8fa0b5");
+        line.setAttribute("stroke-width", x % (gridSize * 5) === 0 ? "0.9" : "0.45");
+        gridGroup.appendChild(line);
+    }
+    for (let y = startY; y <= endY; y += gridSize) {
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", String(startX));
+        line.setAttribute("y1", String(y));
+        line.setAttribute("x2", String(endX));
+        line.setAttribute("y2", String(y));
+        line.setAttribute("stroke", "#8fa0b5");
+        line.setAttribute("stroke-width", y % (gridSize * 5) === 0 ? "0.9" : "0.45");
+        gridGroup.appendChild(line);
+    }
+    svg.appendChild(gridGroup);
+}
+
 function applyBranchStyle(path, node, depth = 1) {
     const style = (node.branchStyle || "SOLID").toUpperCase();
     const strokeColor = node.branchColor || "#7c8a9a";
@@ -312,6 +425,7 @@ function buildConnectorPath(node, x1, y1, x2, y2) {
 function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
+    renderGrid(getViewportForRender());
     const depthMap = buildDepthMap(state.map.nodes);
     const sketchPreset = isSketchPreset();
 
@@ -465,6 +579,14 @@ function render() {
         svg.appendChild(group);
     }
     applyCanvasViewport();
+    const selectedNode = getNodeById(state.selectedNodeId);
+    if (selectedNode) {
+        updateNodeEditorOverlay(selectedNode);
+    }
+    const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
+    if (imageOverlayNode) {
+        updateImageEditorOverlay(imageOverlayNode);
+    }
 }
 
 function openContextMenu(event, nodeId) {
@@ -636,6 +758,16 @@ function renderNodeImage(group, node, width) {
     image.setAttribute("href", node.imageUri);
     image.setAttribute("preserveAspectRatio", "xMidYMid slice");
     image.setAttribute("clip-path", `url(#${clipId})`);
+    image.style.pointerEvents = "all";
+    image.addEventListener("mousedown", event => {
+        event.stopPropagation();
+    });
+    image.addEventListener("click", event => {
+        event.stopPropagation();
+        event.preventDefault();
+        selectNode(node.id, { showNodeOverlay: false });
+        showImageEditorOverlay(node);
+    });
     group.appendChild(image);
 }
 
@@ -828,13 +960,14 @@ function normalizeNodeEmoji(value) {
     return emoji.length ? [...emoji].slice(0, 2).join("") : "";
 }
 
-function selectNode(nodeId) {
+function selectNode(nodeId, options = {}) {
+    const showNodeOverlay = options.showNodeOverlay !== false;
     state.selectedNodeId = nodeId;
     const node = getNodeById(nodeId);
     if (!node) return;
     textInput.value = node.text || "";
     descriptionInput.value = node.description || "";
-    nodeEmojiInput.value = node.emoji || "";
+    if (nodeEmojiInput) nodeEmojiInput.value = node.emoji || "";
     branchTextInput.value = node.branchText || "";
     colorInput.value = getNodeColor(node);
     branchColorInput.value = node.branchColor || "#7c8a9a";
@@ -844,15 +977,24 @@ function selectNode(nodeId) {
     fontSizeInput.value = node.fontSize || 18;
     imageUrlInput.value = node.imageUri || "";
     const imageSize = getNodeImageSize(node);
-    imageWidthInput.value = imageSize.width;
-    imageHeightInput.value = imageSize.height;
+    if (imageWidthInput) imageWidthInput.value = imageSize.width;
+    if (imageHeightInput) imageHeightInput.value = imageSize.height;
     updateImageSizeLabels();
     updateImagePreview(node.imageUri || "");
     render();
+    const selected = getNodeById(state.selectedNodeId);
+    if (nodeEditorOverlay && selected && showNodeOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(selected);
+    } else {
+        hideNodeEditorOverlay();
+    }
+    hideImageEditorOverlay();
 }
 
 function startDrag(event) {
     if (state.resize) return;
+    event.stopPropagation();
     const nodeId = Number(event.currentTarget.dataset.id);
     beginInteractionSnapshot();
     selectNode(nodeId);
@@ -913,6 +1055,20 @@ function startNodeResize(event) {
     };
 }
 
+function startCanvasPan(event) {
+    if (!canvasPanel || event.button !== 0) return;
+    if (state.drag || state.resize) return;
+    if (event.target.closest(".node-group") || event.target.closest(".node-action-button") || event.target.closest(".node-resize-handle") || event.target.closest(".image-resize-handle")) return;
+    state.pan = {
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startScrollLeft: canvasPanel.scrollLeft,
+        startScrollTop: canvasPanel.scrollTop,
+    };
+    svg.classList.add("is-panning");
+    event.preventDefault();
+}
+
 function toSvgPoint(event) {
     const pt = svg.createSVGPoint();
     pt.x = event.clientX;
@@ -920,15 +1076,29 @@ function toSvgPoint(event) {
     return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 
+function snapToGrid(value) {
+    if (!state.gridEnabled) return value;
+    const gridSize = Math.max(5, Number(state.gridSize) || DEFAULT_GRID_SIZE);
+    return Math.round(value / gridSize) * gridSize;
+}
+
 document.addEventListener("mousemove", event => {
     if (!state.drag) return;
     const node = getNodeById(state.drag.nodeId);
     if (!node) return;
     const point = toSvgPoint(event);
-    node.x = Math.round(point.x - state.drag.offsetX);
-    node.y = Math.round(point.y - state.drag.offsetY);
+    node.x = snapToGrid(Math.round(point.x - state.drag.offsetX));
+    node.y = snapToGrid(Math.round(point.y - state.drag.offsetY));
     render();
     scheduleAutosave(node);
+});
+
+document.addEventListener("mousemove", event => {
+    if (!state.pan || !canvasPanel) return;
+    const dx = event.clientX - state.pan.startClientX;
+    const dy = event.clientY - state.pan.startClientY;
+    canvasPanel.scrollLeft = state.pan.startScrollLeft - dx;
+    canvasPanel.scrollTop = state.pan.startScrollTop - dy;
 });
 
 document.addEventListener("mousemove", event => {
@@ -938,15 +1108,15 @@ document.addEventListener("mousemove", event => {
     const point = toSvgPoint(event);
     if (state.resize.mode === "node") {
         const intrinsic = getIntrinsicNodeSize(node);
-        node.nodeWidth = clampNodeWidth(point.x - state.resize.startX + state.resize.pointerOffsetX);
-        node.nodeHeight = clampNodeHeight(point.y - state.resize.startY + state.resize.pointerOffsetY);
+        node.nodeWidth = clampNodeWidth(snapToGrid(point.x - state.resize.startX + state.resize.pointerOffsetX));
+        node.nodeHeight = clampNodeHeight(snapToGrid(point.y - state.resize.startY + state.resize.pointerOffsetY));
         node.nodeWidth = Math.max(node.nodeWidth, intrinsic.width);
         node.nodeHeight = Math.max(node.nodeHeight, intrinsic.height);
     } else {
-        node.imageWidth = clampImageSize(point.x - state.resize.anchorX + state.resize.pointerOffsetX);
-        node.imageHeight = clampImageSize(point.y - state.resize.anchorY + state.resize.pointerOffsetY);
-        imageWidthInput.value = node.imageWidth;
-        imageHeightInput.value = node.imageHeight;
+        node.imageWidth = clampImageSize(snapToGrid(point.x - state.resize.anchorX + state.resize.pointerOffsetX));
+        node.imageHeight = clampImageSize(snapToGrid(point.y - state.resize.anchorY + state.resize.pointerOffsetY));
+        if (imageWidthInput) imageWidthInput.value = node.imageWidth;
+        if (imageHeightInput) imageHeightInput.value = node.imageHeight;
         updateImageSizeLabels();
     }
     render();
@@ -959,22 +1129,32 @@ document.addEventListener("mouseup", () => {
     }
     state.drag = null;
     state.resize = null;
+    state.pan = null;
     state.interactionViewport = null;
+    svg.classList.remove("is-panning");
     applyCanvasViewport();
+    const selectedNode = getNodeById(state.selectedNodeId);
+    if (selectedNode) {
+        updateNodeEditorOverlay(selectedNode);
+    }
+    const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
+    if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
 });
 
 document.addEventListener("click", event => {
     if (event.target.closest(".node-context-menu")) return;
+    if (!event.target.closest(".node-editor-overlay") && !event.target.closest(".node-group")) {
+        if (event.target === svg || event.target.closest(".canvas-scroll-area") || event.target.closest(".canvas-panel")) {
+            hideNodeEditorOverlay();
+            hideImageEditorOverlay();
+        }
+    }
+    if (!event.target.closest(".image-editor-overlay") && !event.target.closest(".node-group")) {
+        if (event.target === svg || event.target.closest(".canvas-scroll-area") || event.target.closest(".canvas-panel")) {
+            hideImageEditorOverlay();
+        }
+    }
     closeContextMenu();
-});
-
-document.getElementById("save-node-btn").addEventListener("click", async () => {
-    const node = getNodeById(state.selectedNodeId);
-    if (!node) return;
-    pushUndoSnapshot();
-    applyFormToNode(node);
-    render();
-    await saveNode(node);
 });
 
 document.getElementById("apply-image-url-btn").addEventListener("click", () => {
@@ -984,12 +1164,16 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
     node.imageUri = normalizeImageUri(imageUrlInput.value);
     if (hasNodeImage(node)) {
         node.emoji = "";
-        nodeEmojiInput.value = "";
+        if (nodeEmojiInput) nodeEmojiInput.value = "";
     }
     ensureNodeImageSize(node);
     imageUrlInput.value = node.imageUri || "";
     updateImagePreview(node.imageUri || "");
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 });
 
 document.getElementById("clear-image-btn").addEventListener("click", () => {
@@ -1001,10 +1185,14 @@ document.getElementById("clear-image-btn").addEventListener("click", () => {
     node.imageUri = null;
     node.imageWidth = DEFAULT_IMAGE_SIZE;
     node.imageHeight = DEFAULT_IMAGE_SIZE;
-    imageWidthInput.value = DEFAULT_IMAGE_SIZE;
-    imageHeightInput.value = DEFAULT_IMAGE_SIZE;
+    if (imageWidthInput) imageWidthInput.value = DEFAULT_IMAGE_SIZE;
+    if (imageHeightInput) imageHeightInput.value = DEFAULT_IMAGE_SIZE;
     updateImageSizeLabels();
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 });
 
 imageUploadInput.addEventListener("change", event => {
@@ -1023,41 +1211,53 @@ imageUploadInput.addEventListener("change", event => {
         updateImagePreview(dataUrl);
         node.imageUri = dataUrl;
         node.emoji = "";
-        nodeEmojiInput.value = "";
+        if (nodeEmojiInput) nodeEmojiInput.value = "";
         ensureNodeImageSize(node);
-        imageWidthInput.value = node.imageWidth;
-        imageHeightInput.value = node.imageHeight;
+        if (imageWidthInput) imageWidthInput.value = node.imageWidth;
+        if (imageHeightInput) imageHeightInput.value = node.imageHeight;
         updateImageSizeLabels();
         render();
     };
     reader.readAsDataURL(file);
 });
 
+if (imageWidthInput) {
 imageWidthInput.addEventListener("input", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
-    node.imageWidth = clampImageSize(Number(imageWidthInput.value));
-    imageWidthInput.value = node.imageWidth;
+    node.imageWidth = clampImageSize(Number(imageWidthInput?.value ?? node.imageWidth));
+    if (imageWidthInput) imageWidthInput.value = node.imageWidth;
     updateImageSizeLabels();
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 });
+}
 
+if (imageHeightInput) {
 imageHeightInput.addEventListener("input", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
-    node.imageHeight = clampImageSize(Number(imageHeightInput.value));
-    imageHeightInput.value = node.imageHeight;
+    node.imageHeight = clampImageSize(Number(imageHeightInput?.value ?? node.imageHeight));
+    if (imageHeightInput) imageHeightInput.value = node.imageHeight;
     updateImageSizeLabels();
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 });
+}
 
-const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, branchWidthInput, branchCurveInput, fontSizeInput, imageUrlInput];
+const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, branchWidthInput, branchCurveInput, fontSizeInput, imageUrlInput].filter(Boolean);
 for (const field of autosubmitFields) {
     const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
 }
-imageWidthInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
-imageHeightInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
+if (imageWidthInput) imageWidthInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
+if (imageHeightInput) imageHeightInput.addEventListener("change", () => queueAutoSubmitSelectedNode());
 function updateImagePreview(uri) {
     if (uri) {
         imagePreview.src = uri;
@@ -1071,7 +1271,7 @@ function updateImagePreview(uri) {
 function applyFormToNode(node) {
     node.text = normalizeNodeText(textInput.value);
     node.description = normalizeNodeText(descriptionInput.value || "").slice(0, 280);
-    node.emoji = normalizeNodeEmoji(nodeEmojiInput.value);
+    node.emoji = normalizeNodeEmoji(nodeEmojiInput?.value || "");
     node.branchText = (branchTextInput.value || "").trim();
     node.color = colorInput.value;
     node.branchColor = branchColorInput.value;
@@ -1080,8 +1280,8 @@ function applyFormToNode(node) {
     node.branchCurve = (branchCurveInput.value || "CUBIC").toUpperCase();
     node.fontSize = Number(fontSizeInput.value);
     node.imageUri = normalizeImageUri(imageUrlInput.value);
-    node.imageWidth = clampImageSize(Number(imageWidthInput.value));
-    node.imageHeight = clampImageSize(Number(imageHeightInput.value));
+    node.imageWidth = clampImageSize(Number(imageWidthInput?.value ?? node.imageWidth));
+    node.imageHeight = clampImageSize(Number(imageHeightInput?.value ?? node.imageHeight));
     if (hasNodeImage(node)) {
         node.emoji = "";
     } else if (hasNodeEmoji(node)) {
@@ -1116,15 +1316,46 @@ function clampImageSize(value) {
 
 function handleCanvasWheelZoom(event) {
     if (!zoomInput) return;
-    if (!event.ctrlKey) return;
+    if (!(event.ctrlKey || event.metaKey)) return;
+
+    const deltaModeFactor = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? 120
+            : 1;
+    const normalizedDeltaY = event.deltaY * deltaModeFactor;
+    if (!Number.isFinite(normalizedDeltaY) || normalizedDeltaY === 0) return;
 
     event.preventDefault();
-    const step = event.deltaY < 0 ? 5 : -5;
+    const intensity = Math.min(1.2, Math.abs(normalizedDeltaY) / 100);
+    const rawStep = (normalizedDeltaY < 0 ? 1 : -1) * 3 * intensity;
+    const step = Math.sign(rawStep) * Math.max(0.8, Math.abs(rawStep));
     const currentZoom = Number(zoomInput.value) || 100;
     const nextZoom = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, currentZoom + step));
     if (nextZoom === currentZoom) return;
-    zoomInput.value = String(nextZoom);
-    applyCanvasViewport();
+    animateZoomTo(nextZoom);
+}
+
+function animateZoomTo(targetZoom) {
+    state.zoomAnimationTarget = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, targetZoom));
+    if (state.zoomAnimationFrame) return;
+
+    function tick() {
+        const currentZoom = Number(zoomInput.value) || 100;
+        const delta = state.zoomAnimationTarget - currentZoom;
+        if (Math.abs(delta) < 0.05) {
+            zoomInput.value = String(state.zoomAnimationTarget);
+            applyCanvasViewport();
+            state.zoomAnimationFrame = null;
+            return;
+        }
+        const easedStep = delta * 0.22;
+        zoomInput.value = String(currentZoom + easedStep);
+        applyCanvasViewport();
+        state.zoomAnimationFrame = requestAnimationFrame(tick);
+    }
+
+    state.zoomAnimationFrame = requestAnimationFrame(tick);
 }
 
 function ensureNodeImageSize(node) {
@@ -1157,8 +1388,8 @@ function clampNodeHeight(value) {
 }
 
 function updateImageSizeLabels() {
-    imageWidthValue.textContent = imageWidthInput.value;
-    imageHeightValue.textContent = imageHeightInput.value;
+    if (imageWidthValue && imageWidthInput) imageWidthValue.textContent = imageWidthInput.value;
+    if (imageHeightValue && imageHeightInput) imageHeightValue.textContent = imageHeightInput.value;
 }
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
@@ -1187,26 +1418,46 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
     state.map.nodes.push(node);
     selectNode(node.id);
     render();
-});
-
-document.getElementById("add-child-btn").addEventListener("click", async () => {
-    const parent = getNodeById(state.selectedNodeId);
-    if (!parent) return alert("Seleziona prima un nodo.");
-    await addChildNode(parent.id);
-});
-
-document.getElementById("delete-node-btn").addEventListener("click", async () => {
-    if (state.selectedNodeId == null) return;
-    await deleteNodeWithChecks(state.selectedNodeId);
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 });
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
 if (zoomInput) {
     zoomInput.addEventListener("input", () => applyCanvasViewport());
 }
+if (gridEnabledInput) {
+    gridEnabledInput.addEventListener("change", () => {
+        state.gridEnabled = !!gridEnabledInput.checked;
+        render();
+    });
+}
+if (gridSizeInput) {
+    gridSizeInput.addEventListener("change", () => {
+        state.gridSize = Math.max(5, Number(gridSizeInput.value) || DEFAULT_GRID_SIZE);
+        render();
+    });
+}
 
 if (canvasPanel) {
-    canvasPanel.addEventListener("wheel", handleCanvasWheelZoom, { passive: false });
+    svg.addEventListener("mousedown", startCanvasPan);
+
+    canvasPanel.addEventListener("scroll", () => {
+        const selectedNode = getNodeById(state.selectedNodeId);
+        if (selectedNode) updateNodeEditorOverlay(selectedNode);
+        const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
+        if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
+    });
+
+    window.addEventListener("wheel", event => {
+        const rect = canvasPanel.getBoundingClientRect();
+        const isInsideCanvasByPointer = event.clientX >= rect.left && event.clientX <= rect.right
+            && event.clientY >= rect.top && event.clientY <= rect.bottom;
+        if (!isInsideCanvasByPointer) return;
+        handleCanvasWheelZoom(event);
+    }, { passive: false, capture: true });
 }
 
 autoLayoutBtn.addEventListener("click", async () => {
@@ -1227,13 +1478,13 @@ async function createNode(payload) {
 }
 
 async function saveNode(node) {
-    autosaveStatus.textContent = "Salvataggio in corso...";
+    if (autosaveStatus) autosaveStatus.textContent = "Salvataggio in corso...";
     await fetch(`/api/nodes/${node.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(node)
     });
-    autosaveStatus.textContent = "Modifiche salvate.";
+    if (autosaveStatus) autosaveStatus.textContent = "Modifiche salvate.";
 }
 
 function queueAutoSubmitSelectedNode() {
@@ -1246,7 +1497,7 @@ function queueAutoSubmitSelectedNode() {
 }
 
 function scheduleAutosave(node) {
-    autosaveStatus.textContent = "Modifiche non ancora salvate...";
+    if (autosaveStatus) autosaveStatus.textContent = "Modifiche non ancora salvate...";
     clearTimeout(state.autosaveTimer);
     state.autosaveNodeId = node.id;
     state.autosaveTimer = setTimeout(() => {
@@ -1458,6 +1709,10 @@ async function addChildNode(parentId) {
     state.map.nodes.push(node);
     selectNode(node.id);
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 }
 
 async function deleteNodeWithChecks(nodeId) {
@@ -1476,6 +1731,10 @@ async function deleteNodeWithChecks(nodeId) {
     state.selectedNodeId = state.map.nodes[0]?.id ?? null;
     if (state.selectedNodeId) selectNode(state.selectedNodeId);
     render();
+    if (nodeEditorOverlay) {
+        nodeEditorOverlay.classList.add("visible");
+        updateNodeEditorOverlay(node);
+    }
 }
 
 async function quickEdit(nodeId) {
