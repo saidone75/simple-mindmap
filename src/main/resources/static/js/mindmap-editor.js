@@ -1166,9 +1166,17 @@ function handleCanvasWheelZoom(event) {
     if (!zoomInput) return;
     if (!(event.ctrlKey || event.metaKey)) return;
 
+    const deltaModeFactor = event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? 120
+            : 1;
+    const normalizedDeltaY = event.deltaY * deltaModeFactor;
+    if (!Number.isFinite(normalizedDeltaY) || normalizedDeltaY === 0) return;
+
     event.preventDefault();
-    const intensity = Math.min(1, Math.abs(event.deltaY) / 100);
-    const rawStep = (event.deltaY < 0 ? 1 : -1) * (event.ctrlKey ? 2 : 3) * intensity;
+    const intensity = Math.min(1.2, Math.abs(normalizedDeltaY) / 100);
+    const rawStep = (normalizedDeltaY < 0 ? 1 : -1) * 3 * intensity;
     const step = Math.sign(rawStep) * Math.max(0.8, Math.abs(rawStep));
     const currentZoom = Number(zoomInput.value) || 100;
     const nextZoom = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, currentZoom + step));
