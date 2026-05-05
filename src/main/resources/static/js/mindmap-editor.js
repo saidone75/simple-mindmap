@@ -45,6 +45,7 @@ const state = {
     selectedNodeId: null,
     drag: null,
     resize: null,
+    pan: null,
     interactionViewport: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
@@ -895,6 +896,7 @@ function selectNode(nodeId) {
 
 function startDrag(event) {
     if (state.resize) return;
+    event.stopPropagation();
     const nodeId = Number(event.currentTarget.dataset.id);
     beginInteractionSnapshot();
     selectNode(nodeId);
@@ -955,6 +957,20 @@ function startNodeResize(event) {
     };
 }
 
+function startCanvasPan(event) {
+    if (!canvasPanel || event.button !== 0) return;
+    if (state.drag || state.resize) return;
+    if (event.target.closest(".node-group") || event.target.closest(".node-action-button") || event.target.closest(".node-resize-handle") || event.target.closest(".image-resize-handle")) return;
+    state.pan = {
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startScrollLeft: canvasPanel.scrollLeft,
+        startScrollTop: canvasPanel.scrollTop,
+    };
+    svg.classList.add("is-panning");
+    event.preventDefault();
+}
+
 function toSvgPoint(event) {
     const pt = svg.createSVGPoint();
     pt.x = event.clientX;
@@ -977,6 +993,14 @@ document.addEventListener("mousemove", event => {
     node.y = snapToGrid(Math.round(point.y - state.drag.offsetY));
     render();
     scheduleAutosave(node);
+});
+
+document.addEventListener("mousemove", event => {
+    if (!state.pan || !canvasPanel) return;
+    const dx = event.clientX - state.pan.startClientX;
+    const dy = event.clientY - state.pan.startClientY;
+    canvasPanel.scrollLeft = state.pan.startScrollLeft - dx;
+    canvasPanel.scrollTop = state.pan.startScrollTop - dy;
 });
 
 document.addEventListener("mousemove", event => {
@@ -1007,7 +1031,9 @@ document.addEventListener("mouseup", () => {
     }
     state.drag = null;
     state.resize = null;
+    state.pan = null;
     state.interactionViewport = null;
+    svg.classList.remove("is-panning");
     applyCanvasViewport();
 });
 
@@ -1297,6 +1323,8 @@ if (gridSizeInput) {
 }
 
 if (canvasPanel) {
+    svg.addEventListener("mousedown", startCanvasPan);
+
     window.addEventListener("wheel", event => {
         const rect = canvasPanel.getBoundingClientRect();
         const isInsideCanvasByPointer = event.clientX >= rect.left && event.clientX <= rect.right
