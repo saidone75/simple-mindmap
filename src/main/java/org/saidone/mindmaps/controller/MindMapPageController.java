@@ -18,6 +18,8 @@
 
 package org.saidone.mindmaps.controller;
 
+import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.saidone.mindmaps.dto.CreateMindMapRequest;
 import org.saidone.mindmaps.dto.MapGenerationRequestDto;
 import org.saidone.mindmaps.service.MindMapService;
@@ -30,17 +32,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
+@RequiredArgsConstructor
 @RequestMapping("/maps")
 public class MindMapPageController {
 
     private final MindMapService mindMapService;
     private final MapGenerationApplicationService mapGenerationApplicationService;
-
-    public MindMapPageController(MindMapService mindMapService,
-                                 MapGenerationApplicationService mapGenerationApplicationService) {
-        this.mindMapService = mindMapService;
-        this.mapGenerationApplicationService = mapGenerationApplicationService;
-    }
 
     @GetMapping
     public String list(Model model) {
@@ -59,14 +56,14 @@ public class MindMapPageController {
             model.addAttribute("maps", mindMapService.findAll());
             return "maps/list";
         }
-        var map = mindMapService.create(mapForm);
-        return "redirect:/maps/" + map.getId();
+        val map = mindMapService.create(mapForm);
+        return String.format("redirect:/maps/%s", map.getId());
     }
 
     @PostMapping("/template/{templateKey}")
     public String createTemplate(@PathVariable String templateKey) {
-        var map = mindMapService.createFromTemplate(templateKey);
-        return "redirect:/maps/" + map.getId();
+        val map = mindMapService.createFromTemplate(templateKey);
+        return String.format("redirect:/maps/%s", map.getId());
     }
 
     @PostMapping("/ai")
@@ -74,15 +71,15 @@ public class MindMapPageController {
                                @RequestParam(name = "maxDepth", defaultValue = "3") Integer maxDepth,
                                @RequestParam(name = "searchWikimediaImages", defaultValue = "false") boolean searchWikimediaImages,
                                RedirectAttributes redirectAttributes) {
-        var request = new MapGenerationRequestDto();
+        val request = new MapGenerationRequestDto();
         request.setTopic(topic);
         request.setNumberOfNodes(8);
-        request.setMaxDepth(Math.max(1, Math.min(maxDepth, 6)));
+        request.setMaxDepth(Math.clamp(maxDepth, 1, 6));
         request.setSearchWikimediaImages(searchWikimediaImages);
         try {
-            var generated = mapGenerationApplicationService.generateMindMap(request);
-            var map = mindMapService.createFromGeneratedMap(generated, searchWikimediaImages);
-            return "redirect:/maps/" + map.getId();
+            val generated = mapGenerationApplicationService.generateMindMap(request);
+            val map = mindMapService.createFromGeneratedMap(generated, searchWikimediaImages);
+            return String.format("redirect:/maps/%s", map.getId());
         } catch (RuntimeException ex) {
             redirectAttributes.addFlashAttribute("aiError", ex.getMessage());
             return "redirect:/maps";
