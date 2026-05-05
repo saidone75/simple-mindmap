@@ -170,8 +170,21 @@ input[type="file"] {
 .canvas-toolbar label {
     font-weight: 600;
 }
+.toolbar-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 10px;
+}
+.toolbar-checkbox input {
+    width: auto;
+}
 #zoom-control {
     width: 180px;
+}
+#grid-size-control {
+    width: 110px;
+    padding: 8px 10px;
 }
 #zoom-value {
     min-width: 48px;

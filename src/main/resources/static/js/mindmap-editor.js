@@ -36,6 +36,7 @@ const CANVAS_PADDING = 180;
 const INTERACTION_VIEWPORT_MAX_STEP = 12;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
+const DEFAULT_GRID_SIZE = 20;
 const DEFAULT_ROOT_COLOR = "#D9D2E9";
 const DEFAULT_CHILD_COLOR = "#9FC5E8";
 
@@ -56,6 +57,10 @@ const state = {
     redoStack: [],
     interactionSnapshot: null,
     isApplyingHistory: false,
+    gridEnabled: false,
+    gridSize: DEFAULT_GRID_SIZE,
+    zoomAnimationFrame: null,
+    zoomAnimationTarget: null
 };
 
 const svg = document.getElementById("mindmap-canvas");
@@ -80,6 +85,8 @@ const branchTextInput = document.getElementById("branch-text");
 const autoLayoutBtn = document.getElementById("auto-layout-btn");
 const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
+const gridEnabledInput = document.getElementById("grid-enabled");
+const gridSizeInput = document.getElementById("grid-size-control");
 const canvasPanel = svg.closest(".canvas-panel");
 
 
@@ -260,6 +267,40 @@ function renderConnectorDefs() {
     svg.appendChild(defs);
 }
 
+function renderGrid(viewport) {
+    if (!state.gridEnabled) return;
+    const gridGroup = document.createElementNS(SVG_NS, "g");
+    gridGroup.setAttribute("class", "grid-layer");
+    gridGroup.setAttribute("opacity", "0.28");
+    const gridSize = Math.max(5, Number(state.gridSize) || DEFAULT_GRID_SIZE);
+    const startX = Math.floor(viewport.x / gridSize) * gridSize;
+    const startY = Math.floor(viewport.y / gridSize) * gridSize;
+    const endX = viewport.x + viewport.width;
+    const endY = viewport.y + viewport.height;
+
+    for (let x = startX; x <= endX; x += gridSize) {
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", String(x));
+        line.setAttribute("y1", String(startY));
+        line.setAttribute("x2", String(x));
+        line.setAttribute("y2", String(endY));
+        line.setAttribute("stroke", "#8fa0b5");
+        line.setAttribute("stroke-width", x % (gridSize * 5) === 0 ? "0.9" : "0.45");
+        gridGroup.appendChild(line);
+    }
+    for (let y = startY; y <= endY; y += gridSize) {
+        const line = document.createElementNS(SVG_NS, "line");
+        line.setAttribute("x1", String(startX));
+        line.setAttribute("y1", String(y));
+        line.setAttribute("x2", String(endX));
+        line.setAttribute("y2", String(y));
+        line.setAttribute("stroke", "#8fa0b5");
+        line.setAttribute("stroke-width", y % (gridSize * 5) === 0 ? "0.9" : "0.45");
+        gridGroup.appendChild(line);
+    }
+    svg.appendChild(gridGroup);
+}
+
 function applyBranchStyle(path, node, depth = 1) {
     const style = (node.branchStyle || "SOLID").toUpperCase();
     const strokeColor = node.branchColor || "#7c8a9a";
@@ -312,6 +353,7 @@ function buildConnectorPath(node, x1, y1, x2, y2) {
 function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
+    renderGrid(getViewportForRender());
     const depthMap = buildDepthMap(state.map.nodes);
     const sketchPreset = isSketchPreset();
 
@@ -920,13 +962,19 @@ function toSvgPoint(event) {
     return pt.matrixTransform(svg.getScreenCTM().inverse());
 }
 
+function snapToGrid(value) {
+    if (!state.gridEnabled) return value;
+    const gridSize = Math.max(5, Number(state.gridSize) || DEFAULT_GRID_SIZE);
+    return Math.round(value / gridSize) * gridSize;
+}
+
 document.addEventListener("mousemove", event => {
     if (!state.drag) return;
     const node = getNodeById(state.drag.nodeId);
     if (!node) return;
     const point = toSvgPoint(event);
-    node.x = Math.round(point.x - state.drag.offsetX);
-    node.y = Math.round(point.y - state.drag.offsetY);
+    node.x = snapToGrid(Math.round(point.x - state.drag.offsetX));
+    node.y = snapToGrid(Math.round(point.y - state.drag.offsetY));
     render();
     scheduleAutosave(node);
 });
@@ -938,13 +986,13 @@ document.addEventListener("mousemove", event => {
     const point = toSvgPoint(event);
     if (state.resize.mode === "node") {
         const intrinsic = getIntrinsicNodeSize(node);
-        node.nodeWidth = clampNodeWidth(point.x - state.resize.startX + state.resize.pointerOffsetX);
-        node.nodeHeight = clampNodeHeight(point.y - state.resize.startY + state.resize.pointerOffsetY);
+        node.nodeWidth = clampNodeWidth(snapToGrid(point.x - state.resize.startX + state.resize.pointerOffsetX));
+        node.nodeHeight = clampNodeHeight(snapToGrid(point.y - state.resize.startY + state.resize.pointerOffsetY));
         node.nodeWidth = Math.max(node.nodeWidth, intrinsic.width);
         node.nodeHeight = Math.max(node.nodeHeight, intrinsic.height);
     } else {
-        node.imageWidth = clampImageSize(point.x - state.resize.anchorX + state.resize.pointerOffsetX);
-        node.imageHeight = clampImageSize(point.y - state.resize.anchorY + state.resize.pointerOffsetY);
+        node.imageWidth = clampImageSize(snapToGrid(point.x - state.resize.anchorX + state.resize.pointerOffsetX));
+        node.imageHeight = clampImageSize(snapToGrid(point.y - state.resize.anchorY + state.resize.pointerOffsetY));
         imageWidthInput.value = node.imageWidth;
         imageHeightInput.value = node.imageHeight;
         updateImageSizeLabels();
@@ -1116,15 +1164,37 @@ function clampImageSize(value) {
 
 function handleCanvasWheelZoom(event) {
     if (!zoomInput) return;
-    if (!event.ctrlKey) return;
+    if (!(event.ctrlKey || event.metaKey)) return;
 
     event.preventDefault();
-    const step = event.deltaY < 0 ? 5 : -5;
+    const intensity = Math.min(1, Math.abs(event.deltaY) / 100);
+    const step = (event.deltaY < 0 ? 1 : -1) * (event.ctrlKey ? 2 : 3) * intensity;
     const currentZoom = Number(zoomInput.value) || 100;
     const nextZoom = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, currentZoom + step));
     if (nextZoom === currentZoom) return;
-    zoomInput.value = String(nextZoom);
-    applyCanvasViewport();
+    animateZoomTo(nextZoom);
+}
+
+function animateZoomTo(targetZoom) {
+    state.zoomAnimationTarget = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, targetZoom));
+    if (state.zoomAnimationFrame) return;
+
+    function tick() {
+        const currentZoom = Number(zoomInput.value) || 100;
+        const delta = state.zoomAnimationTarget - currentZoom;
+        if (Math.abs(delta) < 0.25) {
+            zoomInput.value = String(Math.round(state.zoomAnimationTarget));
+            applyCanvasViewport();
+            state.zoomAnimationFrame = null;
+            return;
+        }
+        const easedStep = delta * 0.22;
+        zoomInput.value = String(currentZoom + easedStep);
+        applyCanvasViewport();
+        state.zoomAnimationFrame = requestAnimationFrame(tick);
+    }
+
+    state.zoomAnimationFrame = requestAnimationFrame(tick);
 }
 
 function ensureNodeImageSize(node) {
@@ -1203,6 +1273,18 @@ document.getElementById("delete-node-btn").addEventListener("click", async () =>
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
 if (zoomInput) {
     zoomInput.addEventListener("input", () => applyCanvasViewport());
+}
+if (gridEnabledInput) {
+    gridEnabledInput.addEventListener("change", () => {
+        state.gridEnabled = !!gridEnabledInput.checked;
+        render();
+    });
+}
+if (gridSizeInput) {
+    gridSizeInput.addEventListener("change", () => {
+        state.gridSize = Math.max(5, Number(gridSizeInput.value) || DEFAULT_GRID_SIZE);
+        render();
+    });
 }
 
 if (canvasPanel) {

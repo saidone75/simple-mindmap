@@ -46,6 +46,16 @@
                 <label for="zoom-control">Zoom</label>
                 <input id="zoom-control" type="range" min="10" max="200" step="5" value="100">
                 <span id="zoom-value">100%</span>
+                <label class="toolbar-checkbox" for="grid-enabled">
+                    <input id="grid-enabled" type="checkbox">
+                    Griglia
+                </label>
+                <label for="grid-size-control">Dimensione</label>
+                <select id="grid-size-control">
+                    <option value="10">Fine</option>
+                    <option value="20" selected>Media</option>
+                    <option value="40">Grande</option>
+                </select>
             </div>
             <div class="canvas-scroll-area">
                 <svg id="mindmap-canvas" viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg"></svg>
