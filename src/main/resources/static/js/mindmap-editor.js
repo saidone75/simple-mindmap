@@ -1,5 +1,5 @@
 /*
- * Alice's Simple Mind Map
+ * Alice's Simple Mind Maps
  * Copyright (C) 2026 Miss Alice & Saidone
  *
  * This program is free software: you can redistribute it and/or modify
@@ -33,6 +33,7 @@ const MAP_CENTER_Y = 450;
 const BASE_CANVAS_WIDTH = 1400;
 const BASE_CANVAS_HEIGHT = 900;
 const CANVAS_PADDING = 180;
+const INTERACTION_VIEWPORT_MAX_STEP = 12;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
 const DEFAULT_ROOT_COLOR = "#D9D2E9";
@@ -43,6 +44,7 @@ const state = {
     selectedNodeId: null,
     drag: null,
     resize: null,
+    interactionViewport: null,
     pendingImageNodeId: null,
     autosaveTimer: null,
     autosaveNodeId: null,
@@ -382,7 +384,6 @@ function render() {
             emoji.setAttribute("text-anchor", "middle");
             emoji.setAttribute("dominant-baseline", "middle");
             emoji.textContent = emojiValue;
-            emoji.addEventListener("mousedown", event => event.stopPropagation());
             emoji.addEventListener("click", async event => {
                 event.stopPropagation();
                 await quickEdit(node.id);
@@ -417,7 +418,6 @@ function render() {
             tspan.textContent = line.text || " ";
             text.appendChild(tspan);
         });
-        text.addEventListener("mousedown", event => event.stopPropagation());
         text.addEventListener("click", async event => {
             event.stopPropagation();
             await quickEdit(node.id);
@@ -554,7 +554,8 @@ function applyCanvasViewport() {
         zoomInput.value = String(clampedZoomPercent);
     }
     const zoomFactor = clampedZoomPercent / 100;
-    const { x, y, width, height } = getCanvasBounds();
+    const viewport = getViewportForRender();
+    const { x, y, width, height } = viewport;
 
     svg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
     svg.setAttribute("width", String(Math.round(width * zoomFactor)));
@@ -562,6 +563,37 @@ function applyCanvasViewport() {
     if (zoomValue) {
         zoomValue.textContent = `${clampedZoomPercent}%`;
     }
+}
+
+function moveTowards(current, target, maxDelta) {
+    if (Math.abs(target - current) <= maxDelta) return target;
+    return current + (target > current ? maxDelta : -maxDelta);
+}
+
+function getViewportForRender() {
+    if (!state.interactionViewport) {
+        return getCanvasBounds();
+    }
+    const target = getCanvasBounds();
+    const smoothed = {
+        x: moveTowards(state.interactionViewport.x, target.x, INTERACTION_VIEWPORT_MAX_STEP),
+        y: moveTowards(state.interactionViewport.y, target.y, INTERACTION_VIEWPORT_MAX_STEP),
+        width: moveTowards(state.interactionViewport.width, target.width, INTERACTION_VIEWPORT_MAX_STEP),
+        height: moveTowards(state.interactionViewport.height, target.height, INTERACTION_VIEWPORT_MAX_STEP),
+    };
+    state.interactionViewport = smoothed;
+    return smoothed;
+}
+
+function captureInteractionViewport() {
+    if (state.interactionViewport) return;
+    const viewBox = (svg.getAttribute("viewBox") || "").trim().split(/\s+/).map(Number);
+    if (viewBox.length === 4 && viewBox.every(Number.isFinite)) {
+        const [x, y, width, height] = viewBox;
+        state.interactionViewport = { x, y, width, height };
+        return;
+    }
+    state.interactionViewport = getCanvasBounds();
 }
 
 
@@ -828,6 +860,7 @@ function startDrag(event) {
     if (!node) return;
 
     const point = toSvgPoint(event);
+    captureInteractionViewport();
     state.drag = {
         nodeId,
         offsetX: point.x - node.x,
@@ -847,6 +880,7 @@ function startImageResize(event) {
     const nodeSize = getNodeSize(node);
     const bounds = getNodeImageBounds(node, nodeSize.width);
     const point = toSvgPoint(event);
+    captureInteractionViewport();
     state.resize = {
         mode: "image",
         nodeId,
@@ -868,6 +902,7 @@ function startNodeResize(event) {
     selectNode(nodeId);
     const size = getNodeSize(node);
     const point = toSvgPoint(event);
+    captureInteractionViewport();
     state.resize = {
         mode: "node",
         nodeId,
@@ -924,6 +959,8 @@ document.addEventListener("mouseup", () => {
     }
     state.drag = null;
     state.resize = null;
+    state.interactionViewport = null;
+    applyCanvasViewport();
 });
 
 document.addEventListener("click", event => {
@@ -1079,13 +1116,7 @@ function clampImageSize(value) {
 
 function handleCanvasWheelZoom(event) {
     if (!zoomInput) return;
-    if (!event.ctrlKey && !event.metaKey && event.deltaY === 0) return;
-    if (!event.ctrlKey && !event.metaKey) {
-        const target = event.target;
-        if (!(target instanceof Element) || !target.closest("#mindmap-canvas")) {
-            return;
-        }
-    }
+    if (!event.ctrlKey) return;
 
     event.preventDefault();
     const step = event.deltaY < 0 ? 5 : -5;

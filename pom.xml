@@ -1,5 +1,5 @@
 <!--
-  ~ Alice's Simple Mind Map
+  ~ Alice's Simple Mind Maps
   ~ Copyright (C) 2026 Miss Alice & Saidone
   ~
   ~ This program is free software: you can redistribute it and/or modify
@@ -28,11 +28,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
-    <artifactId>mindmap-thymeleaf-app</artifactId>
+    <groupId>org.saidone</groupId>
+    <artifactId>mindmaps</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>mindmap-thymeleaf-app</name>
-    <description>Applicazione Spring Boot + Thymeleaf per creare mappe mentali</description>
+    <name>Alice's Simple Mind Maps</name>
+    <description>Alice's Simple Mind Maps - App per creare mappe mentali</description>
 
     <properties>
         <java.version>21</java.version>

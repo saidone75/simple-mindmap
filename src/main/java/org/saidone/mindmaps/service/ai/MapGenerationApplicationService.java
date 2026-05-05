@@ -1,0 +1,207 @@
+/*
+ * Alice's Simple Mind Maps
+ * Copyright (C) 2026 Miss Alice & Saidone
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.saidone.mindmaps.service.ai;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.saidone.mindmaps.dto.MindMapDto;
+import org.saidone.mindmaps.dto.NodeDto;
+import org.saidone.mindmaps.dto.MapGenerationRequestDto;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class MapGenerationApplicationService {
+
+    private final MapGenerationService mapGenerationService;
+
+    @Value("${app.ai.generation.max-nodes:20}")
+    private int maxNodesPerRequest;
+
+    @Value("${app.ai.generation.max-attachment-chars:60000}")
+    private int maxAttachmentChars;
+
+    @Value("${app.ai.generation.max-attempts:2}")
+    private int maxAttempts;
+
+    public MindMapDto generateMindMap(MapGenerationRequestDto request) {
+        validateRequestLimits(request);
+
+        applyReferenceTextLimit(request);
+        val attempts = Math.max(1, maxAttempts);
+
+        RuntimeException lastError = null;
+        for (int i = 1; i <= attempts; i++) {
+            try {
+                val generated = mapGenerationService.generateMindMap(request);
+                sanitize(generated);
+                enforceDepth(generated, request.getMaxDepth());
+                return generated;
+            } catch (RuntimeException ex) {
+                lastError = ex;
+                log.warn("Tentativo generazione mindmap {} di {} fallito", i, attempts, ex);
+            }
+        }
+        if (lastError != null && StringUtils.hasText(lastError.getMessage())) {
+            throw new IllegalStateException(lastError.getMessage(), lastError);
+        }
+        throw new IllegalStateException("Impossibile generare la mindmap con l'AI al momento.", lastError);
+    }
+
+    private void validateRequestLimits(MapGenerationRequestDto request) {
+        if (request == null || request.getNumberOfNodes() == null) {
+            throw new IllegalStateException("Richiesta di generazione non valida.");
+        }
+        if (!StringUtils.hasText(request.getTopic())) {
+            throw new IllegalStateException("Inserisci un argomento o una breve descrizione.");
+        }
+        request.setTopic(request.getTopic().trim());
+
+        int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
+        if (request.getMaxDepth() == null) {
+            request.setMaxDepth(3);
+        }
+        request.setMaxDepth(Math.max(2, Math.min(request.getMaxDepth(), 6)));
+        if (request.getNumberOfNodes() > effectiveMaxNodes) {
+            throw new IllegalStateException(String.format("Numero massimo nodi superato. Limite: %d", effectiveMaxNodes));
+        }
+    }
+
+    private void applyReferenceTextLimit(MapGenerationRequestDto request) {
+        if (!StringUtils.hasText(request.getReferenceText())) {
+            request.setReferenceText(null);
+            return;
+        }
+        int effectiveMaxAttachmentChars = maxAttachmentChars > 0 ? maxAttachmentChars : 30000;
+        String truncated = request.getReferenceText().substring(0, Math.min(effectiveMaxAttachmentChars, request.getReferenceText().length()));
+        request.setReferenceText(truncated);
+    }
+
+    private void sanitize(MindMapDto generated) {
+        if (generated == null || generated.getNodes() == null || generated.getNodes().isEmpty()) {
+            throw new IllegalStateException("L'IA non ha generato una mindmap valida.");
+        }
+        if (!StringUtils.hasText(generated.getTitle())) {
+            generated.setTitle("Mindmap generata dall'IA");
+        }
+
+        generated.setNodes(generated.getNodes().stream()
+                .filter(this::hasValidNode)
+                .map(this::normalizeNodeDescription)
+                .toList());
+
+        if (generated.getNodes().isEmpty()) {
+            throw new IllegalStateException("L'IA non ha generato nodi utilizzabili.");
+        }
+    }
+
+
+    private void enforceDepth(MindMapDto generated, Integer requestedMaxDepth) {
+        int targetDepth = requestedMaxDepth == null ? 3 : requestedMaxDepth;
+        targetDepth = Math.max(2, Math.min(targetDepth, 6));
+
+        int nodeCount = generated.getNodes().size();
+        if (nodeCount <= 1) {
+            return;
+        }
+
+        generated.getNodes().get(0).setParentId(null);
+
+        for (int i = 1; i < nodeCount; i++) {
+            NodeDto node = generated.getNodes().get(i);
+            Long rawParentId = node.getParentId();
+
+            int parentIndex = rawParentId == null ? 0 : rawParentId.intValue();
+            if (parentIndex < 0 || parentIndex >= i) {
+                parentIndex = 0;
+                node.setParentId(0L);
+            }
+
+            int depth = computeDepth(generated.getNodes(), i, targetDepth);
+            if (depth > targetDepth) {
+                int safeParent = findAncestorWithinDepth(generated.getNodes(), parentIndex, targetDepth - 1);
+                node.setParentId((long) safeParent);
+            }
+        }
+    }
+
+    private int computeDepth(List<NodeDto> nodes, int nodeIndex, int maxDepthGuard) {
+        int depth = 0;
+        int current = nodeIndex;
+        int guard = 0;
+        while (current > 0 && guard <= nodes.size()) {
+            Long parentId = nodes.get(current).getParentId();
+            if (parentId == null) {
+                break;
+            }
+            int parentIndex = parentId.intValue();
+            if (parentIndex < 0 || parentIndex >= current) {
+                return maxDepthGuard + 1;
+            }
+            depth++;
+            current = parentIndex;
+            if (depth > maxDepthGuard) {
+                return depth;
+            }
+            guard++;
+        }
+        return depth;
+    }
+
+    private int findAncestorWithinDepth(List<NodeDto> nodes, int parentIndex, int maxAllowedDepth) {
+        int current = parentIndex;
+        int currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+        int guard = 0;
+        while (currentDepth > maxAllowedDepth && current > 0 && guard <= nodes.size()) {
+            Long nextParent = nodes.get(current).getParentId();
+            if (nextParent == null) {
+                return 0;
+            }
+            int nextIndex = nextParent.intValue();
+            if (nextIndex < 0 || nextIndex >= current) {
+                return 0;
+            }
+            current = nextIndex;
+            currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
+            guard++;
+        }
+        return currentDepth <= maxAllowedDepth ? current : 0;
+    }
+    private boolean hasValidNode(NodeDto node) {
+        return node != null && StringUtils.hasText(node.getText());
+    }
+
+    private NodeDto normalizeNodeDescription(NodeDto node) {
+        String text = node.getText() == null ? "Nodo" : node.getText().trim();
+        if (!StringUtils.hasText(node.getDescription())) {
+            node.setDescription("Breve descrizione: " + text + ".");
+            return node;
+        }
+        String normalized = node.getDescription().trim().replaceAll("\\s+", " ");
+        node.setDescription(normalized.length() > 280 ? normalized.substring(0, 280) : normalized);
+        return node;
+    }
+
+}

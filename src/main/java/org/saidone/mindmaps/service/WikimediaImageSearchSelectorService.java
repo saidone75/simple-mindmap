@@ -1,0 +1,82 @@
+/*
+ * Alice's Simple Mind Maps
+ * Copyright (C) 2026 Miss Alice & Saidone
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package org.saidone.mindmaps.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lombok.val;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.Semaphore;
+
+@Service
+@Primary
+@RequiredArgsConstructor
+@Slf4j
+public class WikimediaImageSearchSelectorService implements WikimediaImageSearchService {
+
+    private static final String MODE_SIMPLE = "simple";
+    private static final String MODE_ADVANCED = "advanced";
+    private static final int MAX_CONCURRENT_SEARCHES = 3;
+
+    private final WikimediaSimpleImageSearchService simpleImageFinderService;
+    private final WikimediaSemanticImageSearchService advancedImageFinderService;
+    private final Semaphore searchSemaphore = new Semaphore(MAX_CONCURRENT_SEARCHES, true);
+
+    @Override
+    public String searchImage(String[] keywords) {
+        return searchImage(keywords, null);
+    }
+
+    @Override
+    public String searchImage(String[] keywords, String preferredMode) {
+        try {
+            searchSemaphore.acquire();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Ricerca immagine Wikimedia interrotta in attesa di slot disponibile: {}", e.getMessage());
+            return null;
+        }
+
+        try {
+        val mode = resolveMode(preferredMode);
+        if (MODE_SIMPLE.equals(mode)) {
+            return simpleImageFinderService.searchImage(keywords);
+        }
+        return advancedImageFinderService.searchImage(keywords);
+        } finally {
+            searchSemaphore.release();
+        }
+    }
+
+    private String resolveMode(String preferredMode) {
+        if (preferredMode != null && !preferredMode.isBlank()) {
+            val normalizedPreferredMode = preferredMode.trim().toLowerCase();
+            if (MODE_SIMPLE.equals(normalizedPreferredMode) || MODE_ADVANCED.equals(normalizedPreferredMode)) {
+                return normalizedPreferredMode;
+            }
+            log.warn("Modalità preferita '{}' non riconosciuta. Uso '{}'.", preferredMode, MODE_ADVANCED);
+            return MODE_ADVANCED;
+        }
+
+        return MODE_ADVANCED;
+    }
+
+}
