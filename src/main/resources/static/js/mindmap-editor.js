@@ -1168,7 +1168,8 @@ function handleCanvasWheelZoom(event) {
 
     event.preventDefault();
     const intensity = Math.min(1, Math.abs(event.deltaY) / 100);
-    const step = (event.deltaY < 0 ? 1 : -1) * (event.ctrlKey ? 2 : 3) * intensity;
+    const rawStep = (event.deltaY < 0 ? 1 : -1) * (event.ctrlKey ? 2 : 3) * intensity;
+    const step = Math.sign(rawStep) * Math.max(0.8, Math.abs(rawStep));
     const currentZoom = Number(zoomInput.value) || 100;
     const nextZoom = Math.min(MAX_ZOOM_PERCENT, Math.max(MIN_ZOOM_PERCENT, currentZoom + step));
     if (nextZoom === currentZoom) return;
@@ -1182,8 +1183,8 @@ function animateZoomTo(targetZoom) {
     function tick() {
         const currentZoom = Number(zoomInput.value) || 100;
         const delta = state.zoomAnimationTarget - currentZoom;
-        if (Math.abs(delta) < 0.25) {
-            zoomInput.value = String(Math.round(state.zoomAnimationTarget));
+        if (Math.abs(delta) < 0.05) {
+            zoomInput.value = String(state.zoomAnimationTarget);
             applyCanvasViewport();
             state.zoomAnimationFrame = null;
             return;
@@ -1288,7 +1289,13 @@ if (gridSizeInput) {
 }
 
 if (canvasPanel) {
-    canvasPanel.addEventListener("wheel", handleCanvasWheelZoom, { passive: false });
+    window.addEventListener("wheel", event => {
+        const rect = canvasPanel.getBoundingClientRect();
+        const isInsideCanvasByPointer = event.clientX >= rect.left && event.clientX <= rect.right
+            && event.clientY >= rect.top && event.clientY <= rect.bottom;
+        if (!isInsideCanvasByPointer) return;
+        handleCanvasWheelZoom(event);
+    }, { passive: false, capture: true });
 }
 
 autoLayoutBtn.addEventListener("click", async () => {
