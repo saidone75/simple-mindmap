@@ -1,5 +1,5 @@
 /*
- * Alice's Simple Mind Map
+ * Alice's Simple Mind Maps
  * Copyright (C) 2026 Miss Alice & Saidone
  *
  * This program is free software: you can redistribute it and/or modify

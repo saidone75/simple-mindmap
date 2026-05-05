@@ -1,6 +1,6 @@
-# 🧠✨ Alice's Simple MindMap
+# 🧠✨ Alice's Simple Mind Maps
 
-Benvenuto in **Alice's Simple MindMap**, una web app leggera e immediata per creare mappe mentali in pochi click.
+Benvenuto in **Alice's Simple Mind Maps**, una web app leggera e immediata per creare mappe mentali in pochi click.
 Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno stack solido e moderno.
 
 ---
