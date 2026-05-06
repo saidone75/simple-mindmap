@@ -1539,8 +1539,11 @@ async function fetchMap() {
 }
 
 function startImageUploadForNode(nodeId) {
+    const node = getNodeById(nodeId);
+    if (!node) return;
     state.pendingImageNodeId = nodeId;
-    imageUploadInput.click();
+    selectNode(nodeId, { showNodeOverlay: false });
+    showImageEditorOverlay(node);
 }
 
 function buildChildrenMap(nodes) {
