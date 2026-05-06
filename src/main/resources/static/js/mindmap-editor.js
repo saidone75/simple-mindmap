@@ -377,14 +377,14 @@ function applyBranchStyle(path, node, depth = 1) {
     const style = (node.branchStyle || "SOLID").toUpperCase();
     const strokeColor = node.branchColor || "#7c8a9a";
 
-    path.setAttribute("stroke", strokeColor);
+    path.style.stroke = strokeColor;
     const configuredWidth = Number(node.branchWidth);
     const depthWidth = Math.max(2, 6 - Math.min(depth, 4));
     const baseWidth = Number.isFinite(configuredWidth) && configuredWidth > 0 ? configuredWidth : depthWidth;
-    path.setAttribute("stroke-width", String(baseWidth));
+    path.style.strokeWidth = String(baseWidth);
     path.removeAttribute("stroke-dasharray");
     path.removeAttribute("marker-end");
-    path.setAttribute("stroke-linecap", "round");
+    path.style.strokeLinecap = "round";
 
     switch (style) {
         case "DASHED":
@@ -392,7 +392,7 @@ function applyBranchStyle(path, node, depth = 1) {
             break;
         case "DOTTED":
             path.setAttribute("stroke-dasharray", "2 8");
-            path.setAttribute("stroke-linecap", "round");
+            path.style.strokeLinecap = "round";
             break;
         default:
             break;
@@ -447,7 +447,7 @@ function render() {
                 if (sketchPreset) {
                     path.classList.add("connector-sketch");
                     path.removeAttribute("marker-end");
-                    path.setAttribute("stroke-width", String(Math.max(2.5, 5.5 - Math.min(depth, 3))));
+                    path.style.strokeWidth = String(Math.max(2.5, 5.5 - Math.min(depth, 3)));
                 }
                 svg.appendChild(path);
                 renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);
@@ -1007,6 +1007,9 @@ function startDrag(event) {
         nodeId,
         offsetX: point.x - node.x,
         offsetY: point.y - node.y,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        overlayHidden: false,
     };
 }
 
@@ -1086,6 +1089,11 @@ document.addEventListener("mousemove", event => {
     if (!state.drag) return;
     const node = getNodeById(state.drag.nodeId);
     if (!node) return;
+    const moved = Math.hypot(event.clientX - state.drag.startClientX, event.clientY - state.drag.startClientY);
+    if (!state.drag.overlayHidden && moved > 3) {
+        hideNodeEditorOverlay();
+        state.drag.overlayHidden = true;
+    }
     const point = toSvgPoint(event);
     node.x = snapToGrid(Math.round(point.x - state.drag.offsetX));
     node.y = snapToGrid(Math.round(point.y - state.drag.offsetY));
@@ -1135,6 +1143,7 @@ document.addEventListener("mouseup", () => {
     applyCanvasViewport();
     const selectedNode = getNodeById(state.selectedNodeId);
     if (selectedNode) {
+        if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(selectedNode);
     }
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
@@ -1252,8 +1261,9 @@ imageHeightInput.addEventListener("input", () => {
 }
 
 const autosubmitFields = [textInput, descriptionInput, nodeEmojiInput, branchTextInput, colorInput, branchColorInput, branchStyleInput, branchWidthInput, branchCurveInput, fontSizeInput, imageUrlInput].filter(Boolean);
+const instantAutosubmitFields = new Set([textInput, imageUrlInput, branchColorInput, branchWidthInput, fontSizeInput]);
 for (const field of autosubmitFields) {
-    const eventName = field === textInput || field === imageUrlInput ? "input" : "change";
+    const eventName = instantAutosubmitFields.has(field) ? "input" : "change";
     field.addEventListener(eventName, () => queueAutoSubmitSelectedNode());
 }
 if (imageWidthInput) imageWidthInput.addEventListener("change", () => queueAutoSubmitSelectedNode());

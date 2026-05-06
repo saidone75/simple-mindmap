@@ -18,16 +18,16 @@
 
 package org.saidone.mindmaps.controller;
 
-import org.saidone.mindmaps.dto.CreateNodeRequest;
-import org.saidone.mindmaps.dto.MindMapDto;
-import org.saidone.mindmaps.dto.NodeDto;
-import org.saidone.mindmaps.dto.UpdateMapStyleRequest;
-import org.saidone.mindmaps.dto.UpdateNodeRequest;
+import lombok.val;
+import org.saidone.mindmaps.dto.*;
 import org.saidone.mindmaps.service.MindMapService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api")
@@ -66,45 +66,56 @@ public class MindMapRestController {
 
     @GetMapping(value = "/maps/{id}/export", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> exportHtml(@PathVariable Long id) {
-        MindMapDto map = mindMapService.findMapWithNodes(id);
-        StringBuilder html = new StringBuilder();
-        html.append("<!DOCTYPE html><html lang='it'><head><meta charset='UTF-8'><title>")
-                .append(escape(map.getTitle()))
-                .append("</title><style>body{font-family:Arial,sans-serif;background:#fff;margin:0;padding:20px;}svg{width:1400px;height:900px;} .line{stroke:#777;stroke-width:2}.node text{font-weight:600;dominant-baseline:middle;text-anchor:middle;}</style></head><body>");
-        html.append("<h1>").append(escape(map.getTitle())).append("</h1>");
-        html.append("<svg viewBox='0 0 1400 900' xmlns='http://www.w3.org/2000/svg'>");
-        for (var node : map.getNodes()) {
-            if (node.getParentId() != null) {
-                var parent = map.getNodes().stream().filter(n -> n.getId().equals(node.getParentId())).findFirst().orElse(null);
-                if (parent != null) {
-                    int parentW = hasImage(parent) ? 220 : 180;
-                    int parentH = hasImage(parent) ? 100 : 64;
-                    int nodeW = hasImage(node) ? 220 : 180;
-                    int nodeH = hasImage(node) ? 100 : 64;
-                    html.append("<line class='line' x1='").append(parent.getX() + parentW / 2).append("' y1='").append(parent.getY() + parentH / 2)
-                            .append("' x2='").append(node.getX() + nodeW / 2).append("' y2='").append(node.getY() + nodeH / 2).append("' />");
-                }
-            }
-        }
-        for (var node : map.getNodes()) {
-            int width = hasImage(node) ? 220 : 180;
-            int height = hasImage(node) ? 100 : 64;
-            html.append("<g class='node'><rect x='").append(node.getX()).append("' y='").append(node.getY())
-                    .append("' rx='18' ry='18' width='").append(width).append("' height='").append(height).append("' fill='").append(escape(node.getColor()))
-                    .append("' stroke='#555' stroke-width='1.2'/>");
-            if (hasImage(node)) {
-                html.append("<image href='").append(escape(node.getImageUri())).append("' x='").append(node.getX() + (width - 42) / 2)
-                        .append("' y='").append(node.getY() + 12).append("' width='42' height='42' preserveAspectRatio='xMidYMid slice'/>");
-            }
-            html.append("<text x='").append(node.getX() + width / 2).append("' y='")
-                    .append(hasImage(node) ? node.getY() + height - 18 : node.getY() + 34)
-                    .append("' font-size='").append(node.getFontSize()).append("'>")
-                    .append(escape(node.getText())).append("</text></g>");
-        }
-        html.append("</svg></body></html>");
+        val map = mindMapService.findMapWithNodes(id);
+        val nodesById = map.getNodes().stream().collect(Collectors.toMap(NodeDto::getId, Function.identity()));
+        val connections = map.getNodes().stream()
+                .filter(node -> node.getParentId() != null)
+                .map(node -> {
+                    val parent = nodesById.get(node.getParentId());
+                    return parent == null ? "" : buildConnectionLine(parent, node);
+                })
+                .collect(Collectors.joining());
+
+        val nodes = map.getNodes().stream().map(this::buildNodeMarkup).collect(Collectors.joining());
+
+        val html = """
+                <!DOCTYPE html><html lang='it'><head><meta charset='UTF-8'><title>%s</title>
+                <style>body{font-family:Arial,sans-serif;background:#fff;margin:0;padding:20px;}svg{width:1400px;height:900px;} .line{stroke:#777;stroke-width:2}.node text{font-weight:600;dominant-baseline:middle;text-anchor:middle;}</style>
+                </head><body><h1>%s</h1><svg viewBox='0 0 1400 900' xmlns='http://www.w3.org/2000/svg'>%s%s</svg></body></html>
+                """.formatted(escape(map.getTitle()), escape(map.getTitle()), connections, nodes);
+
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mappa-" + id + ".html")
-                .body(html.toString());
+                .header(HttpHeaders.CONTENT_DISPOSITION, String.format("attachment; filename=mappa-%d.html", id))
+                .body(html);
+    }
+
+    private String buildConnectionLine(NodeDto parent, NodeDto node) {
+        int parentW = hasImage(parent) ? 220 : 180;
+        int parentH = hasImage(parent) ? 100 : 64;
+        int nodeW = hasImage(node) ? 220 : 180;
+        int nodeH = hasImage(node) ? 100 : 64;
+
+        return "<line class='line' x1='%d' y1='%d' x2='%d' y2='%d' />"
+                .formatted(parent.getX() + parentW / 2, parent.getY() + parentH / 2, node.getX() + nodeW / 2, node.getY() + nodeH / 2);
+    }
+
+    private String buildNodeMarkup(NodeDto node) {
+        int width = hasImage(node) ? 220 : 180;
+        int height = hasImage(node) ? 100 : 64;
+
+        val imageMarkup = hasImage(node)
+                ? "<image href='%s' x='%d' y='%d' width='42' height='42' preserveAspectRatio='xMidYMid slice'/>"
+                .formatted(escape(node.getImageUri()), node.getX() + (width - 42) / 2, node.getY() + 12)
+                : "";
+
+        return """
+                <g class='node'><rect x='%d' y='%d' rx='18' ry='18' width='%d' height='%d' fill='%s' stroke='#555' stroke-width='1.2'/>%s
+                <text x='%d' y='%d' font-size='%d'>%s</text></g>
+                """.formatted(
+                node.getX(), node.getY(), width, height, escape(node.getColor()), imageMarkup,
+                node.getX() + width / 2, hasImage(node) ? node.getY() + height - 18 : node.getY() + 34,
+                node.getFontSize(), escape(node.getText())
+        );
     }
 
     private boolean hasImage(NodeDto node) {
