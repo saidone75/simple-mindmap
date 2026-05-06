@@ -1007,6 +1007,9 @@ function startDrag(event) {
         nodeId,
         offsetX: point.x - node.x,
         offsetY: point.y - node.y,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        overlayHidden: false,
     };
 }
 
@@ -1086,6 +1089,11 @@ document.addEventListener("mousemove", event => {
     if (!state.drag) return;
     const node = getNodeById(state.drag.nodeId);
     if (!node) return;
+    const moved = Math.hypot(event.clientX - state.drag.startClientX, event.clientY - state.drag.startClientY);
+    if (!state.drag.overlayHidden && moved > 3) {
+        hideNodeEditorOverlay();
+        state.drag.overlayHidden = true;
+    }
     const point = toSvgPoint(event);
     node.x = snapToGrid(Math.round(point.x - state.drag.offsetX));
     node.y = snapToGrid(Math.round(point.y - state.drag.offsetY));
@@ -1135,6 +1143,7 @@ document.addEventListener("mouseup", () => {
     applyCanvasViewport();
     const selectedNode = getNodeById(state.selectedNodeId);
     if (selectedNode) {
+        if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(selectedNode);
     }
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
