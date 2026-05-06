@@ -18,6 +18,7 @@
 
 package org.saidone.mindmaps.controller;
 
+import lombok.val;
 import org.saidone.mindmaps.dto.CreateNodeRequest;
 import org.saidone.mindmaps.dto.MindMapDto;
 import org.saidone.mindmaps.dto.NodeDto;
@@ -66,16 +67,16 @@ public class MindMapRestController {
 
     @GetMapping(value = "/maps/{id}/export", produces = MediaType.TEXT_HTML_VALUE)
     public ResponseEntity<String> exportHtml(@PathVariable Long id) {
-        MindMapDto map = mindMapService.findMapWithNodes(id);
-        StringBuilder html = new StringBuilder();
+        val map = mindMapService.findMapWithNodes(id);
+        val html = new StringBuilder();
         html.append("<!DOCTYPE html><html lang='it'><head><meta charset='UTF-8'><title>")
                 .append(escape(map.getTitle()))
                 .append("</title><style>body{font-family:Arial,sans-serif;background:#fff;margin:0;padding:20px;}svg{width:1400px;height:900px;} .line{stroke:#777;stroke-width:2}.node text{font-weight:600;dominant-baseline:middle;text-anchor:middle;}</style></head><body>");
         html.append("<h1>").append(escape(map.getTitle())).append("</h1>");
         html.append("<svg viewBox='0 0 1400 900' xmlns='http://www.w3.org/2000/svg'>");
-        for (var node : map.getNodes()) {
+        for (val node : map.getNodes()) {
             if (node.getParentId() != null) {
-                var parent = map.getNodes().stream().filter(n -> n.getId().equals(node.getParentId())).findFirst().orElse(null);
+                val parent = map.getNodes().stream().filter(n -> n.getId().equals(node.getParentId())).findFirst().orElse(null);
                 if (parent != null) {
                     int parentW = hasImage(parent) ? 220 : 180;
                     int parentH = hasImage(parent) ? 100 : 64;
@@ -86,7 +87,7 @@ public class MindMapRestController {
                 }
             }
         }
-        for (var node : map.getNodes()) {
+        for (val node : map.getNodes()) {
             int width = hasImage(node) ? 220 : 180;
             int height = hasImage(node) ? 100 : 64;
             html.append("<g class='node'><rect x='").append(node.getX()).append("' y='").append(node.getY())
@@ -103,7 +104,7 @@ public class MindMapRestController {
         }
         html.append("</svg></body></html>");
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=mappa-" + id + ".html")
+                .header(HttpHeaders.CONTENT_DISPOSITION, String.format("attachment; filename=mappa-%d.html", id))
                 .body(html.toString());
     }
 
