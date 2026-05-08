@@ -95,7 +95,7 @@ public class MapGenerationApplicationService {
             return;
         }
         int effectiveMaxAttachmentChars = maxAttachmentChars > 0 ? maxAttachmentChars : 30000;
-        String truncated = request.getReferenceText().substring(0, Math.min(effectiveMaxAttachmentChars, request.getReferenceText().length()));
+        val truncated = request.getReferenceText().substring(0, Math.min(effectiveMaxAttachmentChars, request.getReferenceText().length()));
         request.setReferenceText(truncated);
     }
 
@@ -130,8 +130,8 @@ public class MapGenerationApplicationService {
         generated.getNodes().get(0).setParentId(null);
 
         for (int i = 1; i < nodeCount; i++) {
-            NodeDto node = generated.getNodes().get(i);
-            Long rawParentId = node.getParentId();
+            val node = generated.getNodes().get(i);
+            val rawParentId = node.getParentId();
 
             int parentIndex = rawParentId == null ? 0 : rawParentId.intValue();
             if (parentIndex < 0 || parentIndex >= i) {
@@ -152,7 +152,7 @@ public class MapGenerationApplicationService {
         int current = nodeIndex;
         int guard = 0;
         while (current > 0 && guard <= nodes.size()) {
-            Long parentId = nodes.get(current).getParentId();
+            val parentId = nodes.get(current).getParentId();
             if (parentId == null) {
                 break;
             }
@@ -175,7 +175,7 @@ public class MapGenerationApplicationService {
         int currentDepth = computeDepth(nodes, current, maxAllowedDepth + nodes.size());
         int guard = 0;
         while (currentDepth > maxAllowedDepth && current > 0 && guard <= nodes.size()) {
-            Long nextParent = nodes.get(current).getParentId();
+            val nextParent = nodes.get(current).getParentId();
             if (nextParent == null) {
                 return 0;
             }
@@ -194,12 +194,12 @@ public class MapGenerationApplicationService {
     }
 
     private NodeDto normalizeNodeDescription(NodeDto node) {
-        String text = node.getText() == null ? "Nodo" : node.getText().trim();
+        val text = node.getText() == null ? "Nodo" : node.getText().trim();
         if (!StringUtils.hasText(node.getDescription())) {
             node.setDescription("Breve descrizione: " + text + ".");
             return node;
         }
-        String normalized = node.getDescription().trim().replaceAll("\\s+", " ");
+        val normalized = node.getDescription().trim().replaceAll("\\s+", " ");
         node.setDescription(normalized.length() > 280 ? normalized.substring(0, 280) : normalized);
         return node;
     }
