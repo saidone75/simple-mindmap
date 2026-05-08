@@ -18,6 +18,8 @@
 
 package org.saidone.mindmaps.service;
 
+import lombok.RequiredArgsConstructor;
+import lombok.val;
 import org.saidone.mindmaps.dto.*;
 import org.saidone.mindmaps.model.MindMap;
 import org.saidone.mindmaps.model.Node;
@@ -32,6 +34,7 @@ import java.util.List;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
+@RequiredArgsConstructor
 @Service
 public class MindMapService {
     private static final int MIN_IMAGE_SIZE = 24;
@@ -46,12 +49,6 @@ public class MindMapService {
     private final NodeRepository nodeRepository;
     private final WikimediaImageSearchService wikimediaImageSearchService;
 
-    public MindMapService(MindMapRepository mindMapRepository, NodeRepository nodeRepository, WikimediaImageSearchService wikimediaImageSearchService) {
-        this.mindMapRepository = mindMapRepository;
-        this.nodeRepository = nodeRepository;
-        this.wikimediaImageSearchService = wikimediaImageSearchService;
-    }
-
     public List<MindMap> findAll() {
         return mindMapRepository.findAll().stream()
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
@@ -59,8 +56,8 @@ public class MindMapService {
     }
 
     public MindMapDto findMapWithNodes(Long id) {
-        MindMap map = getMap(id);
-        MindMapDto dto = new MindMapDto();
+        val map = getMap(id);
+        val dto = new MindMapDto();
         dto.setId(map.getId());
         dto.setTitle(map.getTitle());
         dto.setStylePreset(normalizeStylePreset(map.getStylePreset()));
@@ -70,12 +67,12 @@ public class MindMapService {
 
     @Transactional
     public MindMap create(CreateMindMapRequest request) {
-        MindMap map = new MindMap();
+        val map = new MindMap();
         map.setTitle(request.getTitle().trim());
         map.setStylePreset(DEFAULT_STYLE_PRESET);
-        MindMap savedMap = mindMapRepository.save(map);
+        val savedMap = mindMapRepository.save(map);
 
-        Node root = new Node();
+        val root = new Node();
         root.setMapId(savedMap.getId());
         root.setParentId(null);
         root.setText(savedMap.getTitle());
@@ -101,19 +98,19 @@ public class MindMapService {
 
     @Transactional
     public MindMap createFromTemplate(String templateKey) {
-        String title = switch (templateKey) {
+        val title = switch (templateKey) {
             case "italiano" -> "Italiano";
             case "scienze" -> "Scienze";
             case "storia" -> "Storia";
             case "geografia" -> "Geografia";
             default -> "Nuova mappa";
         };
-        MindMap map = new MindMap();
+        val map = new MindMap();
         map.setTitle(title);
         map.setStylePreset(DEFAULT_STYLE_PRESET);
-        MindMap saved = mindMapRepository.save(map);
+        val saved = mindMapRepository.save(map);
 
-        Node root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, "#FFD966");
+        val root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, "#FFD966");
 
         switch (templateKey) {
             case "italiano" -> {
@@ -140,7 +137,8 @@ public class MindMapService {
                 createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, "#F4CCCC");
                 createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, "#F9CB9C");
             }
-            default -> {}
+            default -> {
+            }
         }
         return saved;
     }
@@ -152,26 +150,26 @@ public class MindMapService {
 
     @Transactional
     public MindMap createFromGeneratedMap(MindMapDto generatedMap, boolean searchWikimediaImages) {
-        String title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
+        val title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
                 ? "Mappa generata con AI"
                 : generatedMap.getTitle().trim();
 
-        MindMap map = new MindMap();
+        val map = new MindMap();
         map.setTitle(title);
         map.setStylePreset(normalizeStylePreset(generatedMap.getStylePreset()));
-        MindMap saved = mindMapRepository.save(map);
+        val saved = mindMapRepository.save(map);
 
-        List<Long> createdNodeIdsByIndex = new ArrayList<>();
+        val createdNodeIdsByIndex = new ArrayList<Long>();
         for (int index = 0; index < generatedMap.getNodes().size(); index++) {
-            NodeDto nodeDto = generatedMap.getNodes().get(index);
+            val nodeDto = generatedMap.getNodes().get(index);
 
             Long parentId = null;
-            Long parentRef = nodeDto.getParentId();
+            val parentRef = nodeDto.getParentId();
             if (parentRef != null && parentRef >= 0 && parentRef < createdNodeIdsByIndex.size()) {
                 parentId = createdNodeIdsByIndex.get(parentRef.intValue());
             }
 
-            Node node = createNode(
+            val node = createNode(
                     saved.getId(),
                     parentId,
                     nodeDto.getText().trim(),
@@ -198,7 +196,7 @@ public class MindMapService {
     @Transactional
     public NodeDto addNode(Long mapId, CreateNodeRequest request) {
         getMap(mapId);
-        Node node = new Node();
+        val node = new Node();
         node.setMapId(mapId);
         node.setParentId(request.getParentId());
         node.setText(request.getText() == null || request.getText().isBlank() ? "Nuovo nodo" : request.getText().trim());
@@ -222,10 +220,11 @@ public class MindMapService {
 
     @Transactional
     public NodeDto updateNode(Long nodeId, UpdateNodeRequest request) {
-        Node node = nodeRepository.findById(nodeId)
+        val node = nodeRepository.findById(nodeId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
 
-        if (request.getText() != null) node.setText(request.getText().trim().isEmpty() ? "Nodo" : request.getText().trim());
+        if (request.getText() != null)
+            node.setText(request.getText().trim().isEmpty() ? "Nodo" : request.getText().trim());
         if (request.getDescription() != null) node.setDescription(normalizeNodeDescription(request.getDescription()));
         if (request.getEmoji() != null) node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
         if (request.getBranchText() != null) node.setBranchText(normalizeBranchText(request.getBranchText()));
@@ -247,7 +246,7 @@ public class MindMapService {
 
     @Transactional
     public void deleteNode(Long nodeId) {
-        List<Node> allNodes = nodeRepository.findAll();
+        val allNodes = nodeRepository.findAll();
         deleteRecursive(nodeId, allNodes);
     }
 
@@ -260,21 +259,21 @@ public class MindMapService {
 
     @Transactional
     public MindMapDto updateMapStyle(Long mapId, String stylePreset) {
-        MindMap map = getMap(mapId);
+        val map = getMap(mapId);
         map.setStylePreset(normalizeStylePreset(stylePreset));
         mindMapRepository.save(map);
         return findMapWithNodes(mapId);
     }
 
     private void deleteRecursive(Long nodeId, List<Node> allNodes) {
-        for (Node child : allNodes.stream().filter(n -> nodeId.equals(n.getParentId())).toList()) {
+        for (val child : allNodes.stream().filter(n -> nodeId.equals(n.getParentId())).toList()) {
             deleteRecursive(child.getId(), allNodes);
         }
         nodeRepository.deleteById(nodeId);
     }
 
     private Node createNode(Long mapId, Long parentId, String text, String description, int x, int y, String color) {
-        Node node = new Node();
+        val node = new Node();
         node.setMapId(mapId);
         node.setParentId(parentId);
         node.setText(text);
@@ -306,7 +305,7 @@ public class MindMapService {
                     .limit(4)
                     .toArray(String[]::new);
         }
-        String text = nodeDto.getText() == null ? "" : nodeDto.getText().trim();
+        val text = nodeDto.getText() == null ? "" : nodeDto.getText().trim();
         return text.isEmpty() ? new String[0] : text.split("\\s+");
     }
 
@@ -318,7 +317,7 @@ public class MindMapService {
 
     private String normalizeImageUri(String imageUri) {
         if (imageUri == null) return null;
-        String value = imageUri.trim();
+        val value = imageUri.trim();
         return value.isEmpty() ? null : value;
     }
 
@@ -339,7 +338,7 @@ public class MindMapService {
 
     private String normalizeNodeEmoji(String emoji) {
         if (emoji == null) return null;
-        String value = emoji.trim();
+        val value = emoji.trim();
         if (value.isEmpty()) return null;
         return value.codePoints()
                 .limit(2)
@@ -349,13 +348,13 @@ public class MindMapService {
 
     private String normalizeNodeDescription(String description) {
         if (description == null || description.isBlank()) return "Breve descrizione del nodo.";
-        String normalized = description.trim().replaceAll("\\s+", " ");
+        val normalized = description.trim().replaceAll("\\s+", " ");
         return normalized.length() > 280 ? normalized.substring(0, 280) : normalized;
     }
 
     private String normalizeBranchText(String branchText) {
         if (branchText == null) return null;
-        String value = branchText.trim();
+        val value = branchText.trim();
         if (value.isEmpty()) return null;
         return value.length() > 120 ? value.substring(0, 120) : value;
     }
@@ -369,7 +368,7 @@ public class MindMapService {
     }
 
     private NodeDto toDto(Node node) {
-        NodeDto dto = new NodeDto();
+        val dto = new NodeDto();
         dto.setId(node.getId());
         dto.setParentId(node.getParentId());
         dto.setText(node.getText());
