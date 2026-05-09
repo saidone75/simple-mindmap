@@ -38,7 +38,7 @@
     <section class="section-card">
         <h2>Crea mappa con AI</h2>
         <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
-        <form th:action="@{/maps/ai}" method="post" class="create-form">
+        <form th:action="@{/maps/ai}" method="post" class="create-form" id="ai-generate-form">
             <label for="ai-topic">Argomento o descrizione breve</label>
             <input id="ai-topic" name="topic" type="text" placeholder="Per esempio: Il ciclo dell'acqua" maxlength="160" required>
             <label for="ai-depth">Profondità massima</label>
@@ -101,5 +101,13 @@
         <p th:if="${#lists.isEmpty(maps)}">Non ci sono ancora mappe salvate.</p>
     </section>
 </div>
+
+<div id="loading-overlay" aria-live="polite" aria-busy="true" role="status">
+    <div class="loading-icon" aria-hidden="true">🐇</div>
+    <p>Caricamento...</p>
+</div>
+
+<script th:src="@{/js/loading-overlay.js}"></script>
+<script th:src="@{/js/maps-list.js}"></script>
 </body>
 </html>
