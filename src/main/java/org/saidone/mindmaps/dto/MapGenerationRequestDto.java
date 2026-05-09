@@ -27,4 +27,5 @@ public class MapGenerationRequestDto {
     private Integer maxDepth;
     private String referenceText;
     private Boolean searchWikimediaImages;
+    private Boolean includeBranchText;
 }

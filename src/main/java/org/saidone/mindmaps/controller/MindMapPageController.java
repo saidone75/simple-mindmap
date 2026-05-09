@@ -69,12 +69,14 @@ public class MindMapPageController {
     @PostMapping("/ai")
     public String createWithAi(@RequestParam("topic") String topic,
                                @RequestParam(name = "maxDepth", defaultValue = "3") Integer maxDepth,
+                               @RequestParam(name = "includeBranchText", defaultValue = "false") boolean includeBranchText,
                                @RequestParam(name = "searchWikimediaImages", defaultValue = "false") boolean searchWikimediaImages,
                                RedirectAttributes redirectAttributes) {
         val request = new MapGenerationRequestDto();
         request.setTopic(topic);
         request.setNumberOfNodes(8);
         request.setMaxDepth(Math.clamp(maxDepth, 1, 6));
+        request.setIncludeBranchText(includeBranchText);
         request.setSearchWikimediaImages(searchWikimediaImages);
         try {
             val generated = mapGenerationApplicationService.generateMindMap(request);
