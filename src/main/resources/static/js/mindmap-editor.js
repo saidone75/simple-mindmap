@@ -92,6 +92,12 @@ const gridSizeInput = document.getElementById("grid-size-control");
 const canvasPanel = svg.closest(".canvas-panel");
 const nodeEditorOverlay = document.getElementById("node-editor-overlay");
 const imageEditorOverlay = document.getElementById("image-editor-overlay");
+const appDialog = document.getElementById("app-dialog");
+const appDialogTitle = document.getElementById("app-dialog-title");
+const appDialogMessage = document.getElementById("app-dialog-message");
+const appDialogInput = document.getElementById("app-dialog-input");
+const appDialogCancel = document.getElementById("app-dialog-cancel");
+const appDialogConfirm = document.getElementById("app-dialog-confirm");
 
 
 
@@ -203,6 +209,62 @@ function commitInteractionSnapshot() {
 
 function clearInteractionSnapshot() {
     state.interactionSnapshot = null;
+}
+
+function openDialog({ title, message, mode = "alert", value = "" }) {
+    if (!appDialog || !appDialogTitle || !appDialogMessage || !appDialogConfirm) {
+        return Promise.resolve(mode === "alert" ? true : mode === "confirm" ? false : null);
+    }
+    return new Promise(resolve => {
+        appDialogTitle.textContent = title || "Conferma";
+        appDialogMessage.textContent = message || "";
+        appDialogConfirm.textContent = mode === "alert" ? "Ok" : "Conferma";
+        if (appDialogCancel) {
+            appDialogCancel.classList.toggle("hidden", mode === "alert");
+        }
+        if (appDialogInput) {
+            const showInput = mode === "prompt";
+            appDialogInput.classList.toggle("hidden", !showInput);
+            appDialogInput.value = showInput ? value : "";
+        }
+        if (typeof appDialog.showModal === "function") appDialog.showModal();
+        else appDialog.setAttribute("open", "open");
+
+        const close = result => {
+            if (typeof appDialog.close === "function" && appDialog.open) appDialog.close();
+            else appDialog.removeAttribute("open");
+            appDialogConfirm.removeEventListener("click", onConfirm);
+            appDialogCancel?.removeEventListener("click", onCancel);
+            appDialog.removeEventListener("click", onOverlayClick);
+            document.removeEventListener("keydown", onEscape);
+            resolve(result);
+        };
+
+        const onConfirm = () => {
+            if (mode === "prompt") close(appDialogInput?.value ?? "");
+            else close(true);
+        };
+        const onCancel = () => close(mode === "prompt" ? null : false);
+        const onOverlayClick = event => {
+            if (event.target === appDialog) onCancel();
+        };
+        const onEscape = event => {
+            if (event.key === "Escape") onCancel();
+        };
+
+        appDialogConfirm.addEventListener("click", onConfirm);
+        appDialogCancel?.addEventListener("click", onCancel);
+        appDialog.addEventListener("click", onOverlayClick);
+        document.addEventListener("keydown", onEscape);
+        if (mode === "prompt" && appDialogInput) {
+            setTimeout(() => {
+                appDialogInput.focus();
+                appDialogInput.select();
+            }, 0);
+        } else {
+            appDialogConfirm.focus();
+        }
+    });
 }
 
 function undoChange() {
@@ -1743,10 +1805,19 @@ async function deleteNodeWithChecks(nodeId) {
     if (!node) return;
     const rootCount = state.map.nodes.filter(n => n.parentId == null).length;
     if (node.parentId == null && rootCount === 1) {
-        alert("La mappa deve avere almeno un nodo principale.");
+        await openDialog({
+            title: "Operazione non disponibile",
+            message: "La mappa deve avere almeno un nodo principale.",
+            mode: "alert"
+        });
         return;
     }
-    if (!confirm("Eliminare questo nodo e i suoi rami?")) return;
+    const shouldDelete = await openDialog({
+        title: "Eliminare nodo",
+        message: "Eliminare questo nodo e tutti i suoi rami collegati?",
+        mode: "confirm"
+    });
+    if (!shouldDelete) return;
     pushUndoSnapshot();
     await flushAutosave();
     await fetch(`/api/nodes/${node.id}`, { method: "DELETE" });
@@ -1769,7 +1840,12 @@ async function quickEdit(nodeId) {
 async function quickEditBranchText(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return;
-    const value = window.prompt("Inserisci il testo del ramo:", node.branchText || "");
+    const value = await openDialog({
+        title: "Testo del ramo",
+        message: "Inserisci il testo da mostrare sul collegamento.",
+        mode: "prompt",
+        value: node.branchText || ""
+    });
     if (value === null) return;
     pushUndoSnapshot();
     node.branchText = sanitizePlainText(value.trim());
@@ -1781,7 +1857,12 @@ async function quickEditBranchText(nodeId) {
 async function quickEditEmoji(nodeId) {
     const node = getNodeById(nodeId);
     if (!node) return;
-    const value = window.prompt("Inserisci una emoji per il nodo:", node.emoji || "");
+    const value = await openDialog({
+        title: "Emoji del nodo",
+        message: "Inserisci una emoji da associare al nodo.",
+        mode: "prompt",
+        value: node.emoji || ""
+    });
     if (value === null) return;
     pushUndoSnapshot();
     node.emoji = normalizeNodeEmoji(value);
