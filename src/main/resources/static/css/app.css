@@ -408,3 +408,42 @@ input[type="file"] {
 .image-editor-overlay.visible {
     display: block;
 }
+
+.app-dialog {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    width: min(460px, calc(100% - 32px));
+    max-width: 460px;
+}
+.app-dialog-card {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #d9e1ea;
+    border-radius: 20px;
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+    padding: 18px;
+}
+.app-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px);
+}
+.app-dialog-card h3 {
+    margin: 0 0 6px;
+    font-size: 1.2rem;
+}
+.app-dialog-card p {
+    margin: 0 0 12px;
+    color: #475569;
+}
+.app-dialog-card input {
+    margin-bottom: 12px;
+}
+.app-dialog-card .hidden {
+    display: none;
+}
+.app-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}

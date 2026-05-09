@@ -41,7 +41,7 @@
 
     <main class="editor-layout">
         <section class="canvas-panel">
-            <div class="canvas-hint">Trascina i nodi con il mouse; trascina su un punto vuoto del canvas per scorrere la vista. Clicca direttamente sul testo del nodo o del ramo per modificarlo. Ridimensiona un nodo dal pallino in basso a destra quando è selezionato. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, testo ramo, elimina.</div>
+            <div class="canvas-hint">Trascina i nodi con il mouse; trascina su un punto vuoto del canvas per scorrere la vista. Clicca direttamente sul testo del nodo o del ramo per modificarlo. Ridimensiona un nodo dal pallino in basso a destra quando è selezionato. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, elimina.</div>
             <div class="canvas-toolbar">
                 <button type="button" id="auto-layout-btn" class="secondary-btn small-btn">Auto-layout</button>
                 <label for="zoom-control">Zoom</label>
@@ -121,6 +121,18 @@
         </section>
     </main>
 </div>
+
+<dialog id="app-dialog" class="app-dialog" aria-labelledby="app-dialog-title">
+    <div class="app-dialog-card">
+        <h3 id="app-dialog-title"></h3>
+        <p id="app-dialog-message"></p>
+        <input id="app-dialog-input" type="text" maxlength="280" class="hidden" />
+        <div class="app-dialog-actions">
+            <button type="button" id="app-dialog-cancel" class="secondary-btn">Annulla</button>
+            <button type="button" id="app-dialog-confirm">Conferma</button>
+        </div>
+    </div>
+</dialog>
 
 <script th:inline="javascript">
     const initialMap = /*[[${map}]]*/ {};
