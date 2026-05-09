@@ -99,7 +99,28 @@ const appDialogInput = document.getElementById("app-dialog-input");
 const appDialogCancel = document.getElementById("app-dialog-cancel");
 const appDialogConfirm = document.getElementById("app-dialog-confirm");
 
+/ ===== LOADING OVERLAY =====
+function showLoading(msg) {
+    let el = document.getElementById('loading-overlay');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'loading-overlay';
+        el.innerHTML = '<div class="loading-icon" aria-hidden="true">🐇</div><p></p>';
+        document.body.appendChild(el);
+    }
+    el.querySelector('p').textContent = msg || 'Caricamento...';
+    el.style.display = 'flex';
+}
 
+function hideLoading() {
+    const el = document.getElementById('loading-overlay');
+    if (el) el.style.display = 'none';
+}
+
+if (globalThis.window !== undefined) {
+    globalThis.window.showLoading = showLoading;
+    globalThis.window.hideLoading = hideLoading;
+}
 
 function updateNodeEditorOverlay(node) {
     if (!nodeEditorOverlay || !canvasPanel || !node) return;
