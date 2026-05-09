@@ -2,10 +2,15 @@
     const bindAiGenerateLoading = function () {
         const form = document.getElementById('ai-generate-form');
         if (!form) return;
-        form.addEventListener('submit', () => {
-            if (typeof globalThis.showLoading === 'function') {
-                globalThis.showLoading('Generazione mappa con AI in corso...');
-            }
+        form.addEventListener('submit', (event) => {
+            if (typeof globalThis.showLoading !== 'function') return;
+
+            event.preventDefault();
+            globalThis.showLoading('Generazione mappa con AI in corso...');
+
+            requestAnimationFrame(() => {
+                form.submit();
+            });
         });
     };
 
