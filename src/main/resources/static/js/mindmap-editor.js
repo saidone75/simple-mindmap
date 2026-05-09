@@ -866,12 +866,6 @@ function renderNodeActionButtons(group, node, nodeWidth) {
             onClick: () => quickEditEmoji(node.id)
         },
         {
-            key: "edit-branch-text",
-            label: "🌿",
-            title: "Testo ramo",
-            onClick: () => quickEditBranchText(node.id)
-        },
-        {
             key: "delete-node",
             label: "🗑️",
             title: "Elimina nodo",
@@ -1498,12 +1492,8 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         nodeHeight: BASE_NODE_HEIGHT
     });
     state.map.nodes.push(node);
-    selectNode(node.id);
+    selectNode(node.id, { showNodeOverlay: false });
     render();
-    if (nodeEditorOverlay) {
-        nodeEditorOverlay.classList.add("visible");
-        updateNodeEditorOverlay(node);
-    }
 });
 
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
@@ -1792,12 +1782,8 @@ async function addChildNode(parentId) {
         nodeHeight: BASE_NODE_HEIGHT
     });
     state.map.nodes.push(node);
-    selectNode(node.id);
+    selectNode(node.id, { showNodeOverlay: false });
     render();
-    if (nodeEditorOverlay) {
-        nodeEditorOverlay.classList.add("visible");
-        updateNodeEditorOverlay(node);
-    }
 }
 
 async function deleteNodeWithChecks(nodeId) {
