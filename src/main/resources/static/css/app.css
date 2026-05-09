@@ -447,3 +447,39 @@ input[type="file"] {
     justify-content: flex-end;
     gap: 10px;
 }
+
+#loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: rgba(16, 24, 40, 0.55);
+    color: #fff;
+    font-size: 1rem;
+    text-align: center;
+    backdrop-filter: blur(2px);
+}
+
+#loading-overlay .loading-icon {
+    font-size: 2rem;
+    animation: loading-bounce 0.9s ease-in-out infinite;
+}
+
+#loading-overlay p {
+    margin: 0;
+    font-weight: 600;
+}
+
+@keyframes loading-bounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-6px);
+    }
+}

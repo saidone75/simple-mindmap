@@ -123,6 +123,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
 
 
     private Map<String, Object> buildPayload(MapGenerationRequestDto request) {
+        val includeBranchText = Boolean.TRUE.equals(request.getIncludeBranchText());
         val userPrompt = """
                 Crea una mindmap in italiano e rispondi SOLO con JSON valido compatibile con MindMapDto.
                 Campi obbligatori: title (string), stylePreset (string), nodes (array).
@@ -137,7 +138,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - description è OBBLIGATORIA per ogni nodo: una sola frase breve con descrizione o curiosità utile.
                 - Non lasciare mai description vuota o generica (es. "descrizione", "nodo", "...").
                 - I nodi successivi devono essere brevi, non duplicati e coerenti col tema.
-                - branchText deve essere una breve nota utile (non usare qui la descrizione principale).
+                - %s
                 - imageUri deve essere sempre stringa vuota.
                 - imageKeywords deve contenere 2-6 keyword in inglese, separate da virgola, in ordine di importanza (la più importante per prima), pensate per cercare immagini su Wikimedia Commons.
                 - parentId: null solo per il nodo principale (primo elemento).
@@ -160,6 +161,9 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 request.getTopic(),
                 request.getNumberOfNodes(),
                 request.getMaxDepth() == null ? 3 : request.getMaxDepth(),
+                includeBranchText
+                        ? "branchText deve essere una breve nota utile (non usare qui la descrizione principale)."
+                        : "branchText è opzionale e deve essere sempre una stringa vuota (\"\") per tutti i nodi.",
                 request.getMaxDepth() == null ? 3 : request.getMaxDepth(),
                 StringUtils.hasText(request.getReferenceText()) ? request.getReferenceText() : "N/A"
         );
