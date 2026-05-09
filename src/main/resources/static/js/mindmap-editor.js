@@ -997,7 +997,7 @@ function startDrag(event) {
     event.stopPropagation();
     const nodeId = Number(event.currentTarget.dataset.id);
     beginInteractionSnapshot();
-    selectNode(nodeId);
+    selectNode(nodeId, { showNodeOverlay: false });
     const node = getNodeById(nodeId);
     if (!node) return;
 
@@ -1010,6 +1010,7 @@ function startDrag(event) {
         startClientX: event.clientX,
         startClientY: event.clientY,
         overlayHidden: false,
+        moved: false,
     };
 }
 
@@ -1090,7 +1091,10 @@ document.addEventListener("mousemove", event => {
     const node = getNodeById(state.drag.nodeId);
     if (!node) return;
     const moved = Math.hypot(event.clientX - state.drag.startClientX, event.clientY - state.drag.startClientY);
-    if (!state.drag.overlayHidden && moved > 3) {
+    if (moved > 3) {
+        state.drag.moved = true;
+    }
+    if (!state.drag.overlayHidden && state.drag.moved) {
         hideNodeEditorOverlay();
         state.drag.overlayHidden = true;
     }
@@ -1132,6 +1136,8 @@ document.addEventListener("mousemove", event => {
 });
 
 document.addEventListener("mouseup", () => {
+    const wasDragging = !!state.drag;
+    const dragMoved = !!state.drag?.moved;
     if (state.drag || state.resize) {
         commitInteractionSnapshot();
     }
@@ -1143,8 +1149,12 @@ document.addEventListener("mouseup", () => {
     applyCanvasViewport();
     const selectedNode = getNodeById(state.selectedNodeId);
     if (selectedNode) {
-        if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
-        updateNodeEditorOverlay(selectedNode);
+        if (wasDragging && dragMoved) {
+            hideNodeEditorOverlay();
+        } else {
+            if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
+            updateNodeEditorOverlay(selectedNode);
+        }
     }
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
     if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
