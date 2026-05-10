@@ -96,7 +96,7 @@
                 <p>Ultima modifica: <span th:text="${#temporals.format(map.updatedAt, 'dd/MM/yyyy HH:mm')}"></span></p>
                 <div class="card-actions">
                     <a class="secondary-btn" th:href="@{/maps/{id}(id=${map.id})}">Apri</a>
-                    <form th:action="@{/maps/{id}/delete(id=${map.id})}" method="post" onsubmit="return confirm('Eliminare questa mappa?');">
+                    <form th:action="@{/maps/{id}/delete(id=${map.id})}" method="post" class="delete-map-form">
                         <button class="danger-btn" type="submit">Elimina</button>
                     </form>
                 </div>
@@ -110,6 +110,18 @@
     <div class="loading-icon" aria-hidden="true">🐇</div>
     <p>Caricamento...</p>
 </div>
+
+<dialog id="app-dialog" class="app-dialog" aria-labelledby="app-dialog-title">
+    <div class="app-dialog-card">
+        <h3 id="app-dialog-title"></h3>
+        <p id="app-dialog-message"></p>
+        <input id="app-dialog-input" type="text" maxlength="280" class="hidden" />
+        <div class="app-dialog-actions">
+            <button type="button" id="app-dialog-cancel" class="secondary-btn">Annulla</button>
+            <button type="button" id="app-dialog-confirm">Conferma</button>
+        </div>
+    </div>
+</dialog>
 
 <script th:src="@{/js/loading-overlay.js}"></script>
 <script th:src="@{/js/maps-list.js}"></script>
