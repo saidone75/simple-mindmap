@@ -26,6 +26,8 @@
     --accent-dark: #2563eb;
     --danger: #c0392b;
     --ok: #2e7d32;
+    --loading-overlay-bg: rgba(245, 247, 251, 0.9);
+    --loading-overlay-text: #1f6f43;
 }
 * { box-sizing: border-box; }
 body {
@@ -472,7 +474,7 @@ input[type="file"] {
 #loading-overlay p {
     font-size: 16px;
     font-weight: 700;
-    color: var(--green-dark);
+    color: var(--loading-overlay-text);
 }
 
 @keyframes wonderland-ultra-smooth {
