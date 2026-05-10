@@ -9,13 +9,38 @@
         }
         el.querySelector('p').textContent = msg || 'Caricamento...';
         el.style.display = 'flex';
+        el.setAttribute('aria-busy', 'true');
     }
 
     function hideLoading() {
         const el = document.getElementById('loading-overlay');
-        if (el) el.style.display = 'none';
+        if (!el) return;
+        el.style.display = 'none';
+        el.setAttribute('aria-busy', 'false');
     }
 
     globalThis.showLoading = showLoading;
     globalThis.hideLoading = hideLoading;
+
+    function resetLoadingOverlay() {
+        hideLoading();
+    }
+
+    // Ensure overlays are hidden when a page is restored from browser history (bfcache)
+    // or when the tab regains visibility after a navigation.
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', resetLoadingOverlay, { once: true });
+    } else {
+        resetLoadingOverlay();
+    }
+
+    window.addEventListener('pageshow', resetLoadingOverlay);
+    window.addEventListener('pagehide', resetLoadingOverlay);
+    window.addEventListener('beforeunload', resetLoadingOverlay);
+    window.addEventListener('popstate', resetLoadingOverlay);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            resetLoadingOverlay();
+        }
+    });
 })();
