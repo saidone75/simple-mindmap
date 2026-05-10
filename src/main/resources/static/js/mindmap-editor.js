@@ -714,7 +714,7 @@ function openContextMenu(event, nodeId) {
         trigger: "manual",
         interactive: true,
         placement: "right-start",
-        theme: "light-border",
+        theme: "context-menu",
         appendTo: () => document.body,
         hideOnClick: true,
         onHidden(inst) {
