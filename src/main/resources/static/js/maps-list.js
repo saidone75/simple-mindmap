@@ -8,9 +8,9 @@
             event.preventDefault();
             globalThis.showLoading('Generazione mappa con AI in corso...');
 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 form.submit();
-            });
+            }, 80);
         });
     };
 
