@@ -33,7 +33,7 @@ const MAP_CENTER_Y = 450;
 const BASE_CANVAS_WIDTH = 1400;
 const BASE_CANVAS_HEIGHT = 900;
 const CANVAS_PADDING = 180;
-const INTERACTION_VIEWPORT_MAX_STEP = 12;
+const INTERACTION_VIEWPORT_MAX_STEP = 4;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
 const DEFAULT_GRID_SIZE = 20;
@@ -794,11 +794,24 @@ function getViewportForRender() {
         return getCanvasBounds();
     }
     const target = getCanvasBounds();
+    const current = state.interactionViewport;
+    const currentRight = current.x + current.width;
+    const currentBottom = current.y + current.height;
+    const targetRight = target.x + target.width;
+    const targetBottom = target.y + target.height;
+
+    const nonShrinkingTarget = {
+        x: Math.min(current.x, target.x),
+        y: Math.min(current.y, target.y),
+        width: Math.max(currentRight, targetRight) - Math.min(current.x, target.x),
+        height: Math.max(currentBottom, targetBottom) - Math.min(current.y, target.y),
+    };
+
     const smoothed = {
-        x: moveTowards(state.interactionViewport.x, target.x, INTERACTION_VIEWPORT_MAX_STEP),
-        y: moveTowards(state.interactionViewport.y, target.y, INTERACTION_VIEWPORT_MAX_STEP),
-        width: moveTowards(state.interactionViewport.width, target.width, INTERACTION_VIEWPORT_MAX_STEP),
-        height: moveTowards(state.interactionViewport.height, target.height, INTERACTION_VIEWPORT_MAX_STEP),
+        x: moveTowards(current.x, nonShrinkingTarget.x, INTERACTION_VIEWPORT_MAX_STEP),
+        y: moveTowards(current.y, nonShrinkingTarget.y, INTERACTION_VIEWPORT_MAX_STEP),
+        width: moveTowards(current.width, nonShrinkingTarget.width, INTERACTION_VIEWPORT_MAX_STEP),
+        height: moveTowards(current.height, nonShrinkingTarget.height, INTERACTION_VIEWPORT_MAX_STEP),
     };
     state.interactionViewport = smoothed;
     return smoothed;
