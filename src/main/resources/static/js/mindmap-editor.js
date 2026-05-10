@@ -1686,7 +1686,9 @@ function getSubtreeWeight(nodeId, childrenMap) {
 function applyOrganicLayout() {
     const nodes = state.map.nodes;
     if (!nodes.length) return;
-    const roots = nodes.filter(node => node.parentId == null);
+    const roots = nodes
+        .filter(node => node.parentId == null)
+        .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
     if (!roots.length) return;
     const childrenMap = buildChildrenMap(nodes);
 
