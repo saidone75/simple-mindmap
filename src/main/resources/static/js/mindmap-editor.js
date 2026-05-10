@@ -37,9 +37,6 @@ const INTERACTION_VIEWPORT_MAX_STEP = 12;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
 const DEFAULT_GRID_SIZE = 20;
-const DEFAULT_ROOT_COLOR = "#D9D2E9";
-const DEFAULT_CHILD_COLOR = "#9FC5E8";
-
 const state = {
     map: structuredClone(initialMap),
     selectedNodeId: null,
