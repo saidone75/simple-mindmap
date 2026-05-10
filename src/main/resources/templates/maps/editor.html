@@ -44,6 +44,11 @@
             <div class="canvas-hint">Trascina i nodi con il mouse; trascina su un punto vuoto del canvas per scorrere la vista. Clicca direttamente sul testo del nodo o del ramo per modificarlo. Ridimensiona un nodo dal pallino in basso a destra quando è selezionato. I pulsanti sopra il nodo seguono l'ordine: figlio, immagine, emoji, elimina.</div>
             <div class="canvas-toolbar">
                 <button type="button" id="auto-layout-btn" class="secondary-btn small-btn">Auto-layout</button>
+                <label for="style-preset-control">Stile</label>
+                <select id="style-preset-control" onchange="window.applyMapStylePreset && window.applyMapStylePreset(this.value)">
+                    <option value="CLASSIC">Classico</option>
+                    <option value="TRUE_SUMMER">True Summer</option>
+                </select>
                 <label for="zoom-control">Zoom</label>
                 <input id="zoom-control" type="range" min="10" max="200" step="1" value="100">
                 <span id="zoom-value">100%</span>

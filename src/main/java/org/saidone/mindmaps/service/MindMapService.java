@@ -246,8 +246,11 @@ public class MindMapService {
 
     @Transactional
     public void deleteNode(Long nodeId) {
-        val allNodes = nodeRepository.findAll();
-        deleteRecursive(nodeId, allNodes);
+        val node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
+
+        val mapNodes = nodeRepository.findByMapIdOrderByIdAsc(node.getMapId());
+        deleteRecursive(nodeId, mapNodes);
     }
 
     @Transactional

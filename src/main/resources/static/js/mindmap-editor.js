@@ -23,7 +23,7 @@ const IMAGE_NODE_WIDTH = 220;
 const IMAGE_NODE_HEIGHT = 110;
 const DEFAULT_IMAGE_SIZE = 128;
 const MIN_IMAGE_SIZE = 24;
-const MAX_IMAGE_SIZE = 240;
+const MAX_IMAGE_SIZE = 800;
 const MIN_NODE_WIDTH = 120;
 const MAX_NODE_WIDTH = 720;
 const MIN_NODE_HEIGHT = 60;
@@ -33,13 +33,10 @@ const MAP_CENTER_Y = 450;
 const BASE_CANVAS_WIDTH = 1400;
 const BASE_CANVAS_HEIGHT = 900;
 const CANVAS_PADDING = 180;
-const INTERACTION_VIEWPORT_MAX_STEP = 12;
+const INTERACTION_VIEWPORT_MAX_STEP = 4;
 const MIN_ZOOM_PERCENT = 10;
 const MAX_ZOOM_PERCENT = 200;
 const DEFAULT_GRID_SIZE = 20;
-const DEFAULT_ROOT_COLOR = "#D9D2E9";
-const DEFAULT_CHILD_COLOR = "#9FC5E8";
-
 const state = {
     map: structuredClone(initialMap),
     selectedNodeId: null,
@@ -89,6 +86,7 @@ const zoomInput = document.getElementById("zoom-control");
 const zoomValue = document.getElementById("zoom-value");
 const gridEnabledInput = document.getElementById("grid-enabled");
 const gridSizeInput = document.getElementById("grid-size-control");
+const stylePresetInput = document.getElementById("style-preset-control");
 const canvasPanel = svg.closest(".canvas-panel");
 const nodeEditorOverlay = document.getElementById("node-editor-overlay");
 const imageEditorOverlay = document.getElementById("image-editor-overlay");
@@ -345,6 +343,20 @@ function isSketchPreset() {
     return false;
 }
 
+const STYLE_PRESETS = {
+    CLASSIC: { rootColor: "#D9D2E9", childColor: "#9FC5E8", shape: "ROUNDED", branchColor: "#7c8a9a", branchStyle: "SOLID", branchWidth: 4, branchCurve: "CUBIC" },
+    TRUE_SUMMER: { rootColor: "#AFC4D9", childColor: "#D4C6DD", shape: "SQUARED", branchColor: "#5E7893", branchStyle: "SOLID", branchWidth: 3, branchCurve: "QUADRATIC" }
+};
+
+function getCurrentStylePresetName() {
+    const preset = (state.map.stylePreset || "CLASSIC").toUpperCase();
+    return STYLE_PRESETS[preset] ? preset : "CLASSIC";
+}
+
+function getCurrentStylePreset() {
+    return STYLE_PRESETS[getCurrentStylePresetName()];
+}
+
 function getSketchNodeSize(node) {
     const lines = getNodeDisplayLines(node, 24);
     const longest = lines.reduce((max, line) => Math.max(max, (line.text || "").length), 0);
@@ -356,7 +368,8 @@ function getSketchNodeSize(node) {
 
 
 function getNodeColor(node) {
-    return node.color || (node.parentId == null ? DEFAULT_ROOT_COLOR : DEFAULT_CHILD_COLOR);
+    const preset = getCurrentStylePreset();
+    return node.color || (node.parentId == null ? preset.rootColor : preset.childColor);
 }
 
 function buildDepthMap(nodes) {
@@ -548,8 +561,10 @@ function render() {
         const rect = document.createElementNS(SVG_NS, "rect");
         rect.setAttribute("x", node.x);
         rect.setAttribute("y", node.y);
-        rect.setAttribute("rx", sketchPreset ? 16 : depth === 0 ? 10 : 20);
-        rect.setAttribute("ry", sketchPreset ? 16 : depth === 0 ? 10 : 20);
+        const isSquared = (node.shape || "").toUpperCase() === "SQUARED";
+        const radius = sketchPreset ? 16 : isSquared ? 0 : (depth === 0 ? 10 : 20);
+        rect.setAttribute("rx", radius);
+        rect.setAttribute("ry", radius);
         rect.setAttribute("width", width);
         rect.setAttribute("height", height);
         rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : getNodeColor(node));
@@ -699,7 +714,7 @@ function openContextMenu(event, nodeId) {
         trigger: "manual",
         interactive: true,
         placement: "right-start",
-        theme: "light-border",
+        theme: "context-menu",
         appendTo: () => document.body,
         hideOnClick: true,
         onHidden(inst) {
@@ -779,11 +794,24 @@ function getViewportForRender() {
         return getCanvasBounds();
     }
     const target = getCanvasBounds();
+    const current = state.interactionViewport;
+    const currentRight = current.x + current.width;
+    const currentBottom = current.y + current.height;
+    const targetRight = target.x + target.width;
+    const targetBottom = target.y + target.height;
+
+    const nonShrinkingTarget = {
+        x: Math.min(current.x, target.x),
+        y: Math.min(current.y, target.y),
+        width: Math.max(currentRight, targetRight) - Math.min(current.x, target.x),
+        height: Math.max(currentBottom, targetBottom) - Math.min(current.y, target.y),
+    };
+
     const smoothed = {
-        x: moveTowards(state.interactionViewport.x, target.x, INTERACTION_VIEWPORT_MAX_STEP),
-        y: moveTowards(state.interactionViewport.y, target.y, INTERACTION_VIEWPORT_MAX_STEP),
-        width: moveTowards(state.interactionViewport.width, target.width, INTERACTION_VIEWPORT_MAX_STEP),
-        height: moveTowards(state.interactionViewport.height, target.height, INTERACTION_VIEWPORT_MAX_STEP),
+        x: moveTowards(current.x, nonShrinkingTarget.x, INTERACTION_VIEWPORT_MAX_STEP),
+        y: moveTowards(current.y, nonShrinkingTarget.y, INTERACTION_VIEWPORT_MAX_STEP),
+        width: moveTowards(current.width, nonShrinkingTarget.width, INTERACTION_VIEWPORT_MAX_STEP),
+        height: moveTowards(current.height, nonShrinkingTarget.height, INTERACTION_VIEWPORT_MAX_STEP),
     };
     state.interactionViewport = smoothed;
     return smoothed;
@@ -1489,6 +1517,7 @@ function updateImageSizeLabels() {
 }
 
 document.getElementById("add-root-btn").addEventListener("click", async () => {
+    const preset = getCurrentStylePreset();
     pushUndoSnapshot();
     const node = await createNode({
         parentId: null,
@@ -1498,13 +1527,13 @@ document.getElementById("add-root-btn").addEventListener("click", async () => {
         branchText: null,
         x: 180 + Math.round(Math.random() * 700),
         y: 120 + Math.round(Math.random() * 500),
-        color: DEFAULT_ROOT_COLOR,
+        color: preset.rootColor,
         fontSize: 18,
-        shape: "ROUNDED",
-        branchColor: "#7c8a9a",
-        branchStyle: "SOLID",
-        branchWidth: 4,
-        branchCurve: "CUBIC",
+        shape: preset.shape,
+        branchColor: preset.branchColor,
+        branchStyle: preset.branchStyle,
+        branchWidth: preset.branchWidth,
+        branchCurve: preset.branchCurve,
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
@@ -1657,7 +1686,9 @@ function getSubtreeWeight(nodeId, childrenMap) {
 function applyOrganicLayout() {
     const nodes = state.map.nodes;
     if (!nodes.length) return;
-    const roots = nodes.filter(node => node.parentId == null);
+    const roots = nodes
+        .filter(node => node.parentId == null)
+        .sort((a, b) => String(a.id).localeCompare(String(b.id), undefined, { numeric: true }));
     if (!roots.length) return;
     const childrenMap = buildChildrenMap(nodes);
 
@@ -1777,6 +1808,7 @@ async function persistAllNodePositions() {
 }
 
 async function addChildNode(parentId) {
+    const preset = getCurrentStylePreset();
     const parent = getNodeById(parentId);
     if (!parent) return;
     pushUndoSnapshot();
@@ -1788,13 +1820,13 @@ async function addChildNode(parentId) {
         branchText: null,
         x: parent.x + 220,
         y: parent.y + 90,
-        color: DEFAULT_CHILD_COLOR,
+        color: preset.childColor,
         fontSize: 18,
-        shape: "ROUNDED",
-        branchColor: "#7c8a9a",
-        branchStyle: "SOLID",
-        branchWidth: 4,
-        branchCurve: "CUBIC",
+        shape: preset.shape,
+        branchColor: preset.branchColor,
+        branchStyle: preset.branchStyle,
+        branchWidth: preset.branchWidth,
+        branchCurve: preset.branchCurve,
         imageUri: null,
         imageWidth: DEFAULT_IMAGE_SIZE,
         imageHeight: DEFAULT_IMAGE_SIZE,
@@ -1804,6 +1836,34 @@ async function addChildNode(parentId) {
     state.map.nodes.push(node);
     selectNode(node.id, { showNodeOverlay: false });
     render();
+}
+
+async function applyStylePresetToMap(presetName) {
+    const normalized = (presetName || "CLASSIC").toUpperCase();
+    const preset = STYLE_PRESETS[normalized] || STYLE_PRESETS.CLASSIC;
+    state.map.stylePreset = normalized;
+    if (stylePresetInput) stylePresetInput.value = normalized;
+
+    await flushAutosave();
+    for (const node of state.map.nodes) {
+        node.shape = preset.shape;
+        node.branchColor = preset.branchColor;
+        node.branchStyle = preset.branchStyle;
+        node.branchWidth = preset.branchWidth;
+        node.branchCurve = preset.branchCurve;
+        node.color = node.parentId == null ? preset.rootColor : preset.childColor;
+    }
+
+    render();
+    selectNode(state.selectedNodeId, { showNodeOverlay: false });
+    await Promise.all(state.map.nodes.map(node => saveNode(node)));
+}
+
+if (globalThis.window) {
+    globalThis.window.applyMapStylePreset = async presetName => {
+        pushUndoSnapshot();
+        await applyStylePresetToMap(presetName);
+    };
 }
 
 async function deleteNodeWithChecks(nodeId) {
@@ -1960,6 +2020,15 @@ document.addEventListener("keydown", async event => {
     }
 });
 
-state.map.stylePreset = "CLASSIC";
+state.map.stylePreset = getCurrentStylePresetName();
+if (stylePresetInput) {
+    stylePresetInput.value = state.map.stylePreset;
+    const onPresetChange = async () => {
+        pushUndoSnapshot();
+        await applyStylePresetToMap(stylePresetInput.value);
+    };
+    stylePresetInput.addEventListener("change", onPresetChange);
+    stylePresetInput.addEventListener("input", onPresetChange);
+}
 selectNode(state.map.nodes[0]?.id ?? null);
 render();
