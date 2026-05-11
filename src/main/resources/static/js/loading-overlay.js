@@ -35,12 +35,4 @@
     }
 
     window.addEventListener('pageshow', resetLoadingOverlay);
-    window.addEventListener('pagehide', resetLoadingOverlay);
-    window.addEventListener('beforeunload', resetLoadingOverlay);
-    window.addEventListener('popstate', resetLoadingOverlay);
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            resetLoadingOverlay();
-        }
-    });
 })();

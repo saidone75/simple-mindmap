@@ -284,27 +284,17 @@ input[type="file"] {
     cursor: nwse-resize;
 }
 
-.context-menu-anchor {
-    position: fixed;
-    width: 1px;
-    height: 1px;
-    pointer-events: none;
-}
-
-.tippy-box[data-theme~='context-menu'] {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-}
-
-.tippy-box[data-theme~='context-menu'] > .tippy-content {
-    padding: 0;
-}
-
 .node-context-menu {
+    position: fixed;
+    z-index: 1200;
     display: grid;
     gap: 6px;
     min-width: 210px;
+    padding: 8px;
+    border-radius: 12px;
+    border: 1px solid #d7e3f6;
+    background: #ffffff;
+    box-shadow: 0 18px 34px rgba(15, 23, 42, 0.2);
 }
 
 .node-context-menu button {
