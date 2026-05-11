@@ -691,16 +691,11 @@ function openContextMenu(event, nodeId) {
     event.stopPropagation();
     selectNode(nodeId);
     closeContextMenu();
-    if (typeof window.tippy !== "function") return;
-
-    const anchor = document.createElement("span");
-    anchor.className = "context-menu-anchor";
-    anchor.style.left = `${event.clientX}px`;
-    anchor.style.top = `${event.clientY}px`;
-    document.body.appendChild(anchor);
 
     const content = document.createElement("div");
     content.className = "node-context-menu";
+    content.style.left = `${event.clientX}px`;
+    content.style.top = `${event.clientY}px`;
     content.innerHTML = `
         <button type="button" data-action="add-child">➕ Aggiungi figlio</button>
         <button type="button" data-action="edit-text">✏️ Modifica testo</button>
@@ -709,24 +704,39 @@ function openContextMenu(event, nodeId) {
         <button type="button" data-action="delete" class="danger">🗑️ Elimina nodo</button>
     `;
 
-    const instance = window.tippy(anchor, {
-        content,
-        trigger: "manual",
-        interactive: true,
-        placement: "right-start",
-        theme: "context-menu",
-        appendTo: () => document.body,
-        hideOnClick: true,
-        onHidden(inst) {
-            inst.destroy();
-            anchor.remove();
-            if (state.contextMenu?.instance === inst) {
-                state.contextMenu = null;
+    document.body.appendChild(content);
+    let cleanupAutoUpdate = null;
+    if (window.FloatingUIDOM?.computePosition) {
+        const { computePosition, flip, shift, offset, autoUpdate } = window.FloatingUIDOM;
+        const virtualReference = {
+            getBoundingClientRect() {
+                return {
+                    x: event.clientX,
+                    y: event.clientY,
+                    left: event.clientX,
+                    top: event.clientY,
+                    right: event.clientX,
+                    bottom: event.clientY,
+                    width: 0,
+                    height: 0
+                };
             }
+        };
+        const updateMenuPosition = () => computePosition(virtualReference, content, {
+            placement: "right-start",
+            middleware: [offset(8), flip(), shift({ padding: 8 })]
+        }).then(({ x, y }) => {
+            content.style.left = `${x}px`;
+            content.style.top = `${y}px`;
+        });
+        try {
+            cleanupAutoUpdate = autoUpdate(virtualReference, content, updateMenuPosition);
+            updateMenuPosition();
+        } catch (error) {
+            cleanupAutoUpdate = null;
         }
-    });
-    instance.show();
-    state.contextMenu = { instance, anchor };
+    }
+    state.contextMenu = { content, cleanupAutoUpdate, openedAt: Date.now() };
 
     content.addEventListener("click", async actionEvent => {
         const action = actionEvent.target?.dataset?.action;
@@ -743,7 +753,11 @@ function openContextMenu(event, nodeId) {
 function closeContextMenu() {
     const menu = state.contextMenu;
     if (!menu) return;
-    menu.instance.hide();
+    if (typeof menu.cleanupAutoUpdate === "function") {
+        menu.cleanupAutoUpdate();
+    }
+    menu.content?.remove();
+    state.contextMenu = null;
 }
 
 function getCanvasBounds() {
@@ -1265,6 +1279,8 @@ document.addEventListener("mouseup", () => {
 });
 
 document.addEventListener("click", event => {
+    const justOpenedContextMenu = state.contextMenu && (Date.now() - state.contextMenu.openedAt) < 200;
+    if (justOpenedContextMenu) return;
     if (event.target.closest(".node-context-menu")) return;
     if (!event.target.closest(".node-editor-overlay") && !event.target.closest(".node-group")) {
         if (event.target === svg || event.target.closest(".canvas-scroll-area") || event.target.closest(".canvas-panel")) {
