@@ -3,7 +3,11 @@
 Benvenuto in **Alice's Simple Mind Maps**, una web app leggera e immediata per creare mappe mentali in pochi click.
 Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno stack solido e moderno.
 
----
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+![Java CI](https://github.com/saidone75/simple-mindmaps/actions/workflows/build.yml/badge.svg)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=saidone75_alice-s-simple-mind-maps&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=saidone75_alice-s-simple-mind-maps)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=saidone75_alice-s-simple-mind-maps&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=saidone75_alice-s-simple-mind-maps)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=saidone75_alice-s-simple-mind-maps&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?saidone75_alice-s-simple-mind-maps)
 
 ## 🚀 Cos'è
 
