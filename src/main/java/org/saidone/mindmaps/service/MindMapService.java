@@ -144,11 +144,6 @@ public class MindMapService {
     }
 
     @Transactional
-    public MindMap createFromGeneratedMap(MindMapDto generatedMap) {
-        return createFromGeneratedMap(generatedMap, false);
-    }
-
-    @Transactional
     public MindMap createFromGeneratedMap(MindMapDto generatedMap, boolean searchWikimediaImages) {
         val title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
                 ? "Mappa generata con AI"
@@ -392,4 +387,5 @@ public class MindMapService {
         dto.setNodeHeight(node.getNodeHeight());
         return dto;
     }
+
 }

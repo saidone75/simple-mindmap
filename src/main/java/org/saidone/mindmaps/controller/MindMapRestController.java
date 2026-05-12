@@ -18,6 +18,7 @@
 
 package org.saidone.mindmaps.controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
 import org.saidone.mindmaps.service.MindMapService;
@@ -30,14 +31,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api")
 public class MindMapRestController {
 
     private final MindMapService mindMapService;
-
-    public MindMapRestController(MindMapService mindMapService) {
-        this.mindMapService = mindMapService;
-    }
 
     @GetMapping("/maps/{id}")
     public MindMapDto getMap(@PathVariable Long id) {
