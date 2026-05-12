@@ -21,6 +21,7 @@ package org.saidone.mindmaps.service;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
+import org.saidone.mindmaps.mapper.NodeMapper;
 import org.saidone.mindmaps.model.MindMap;
 import org.saidone.mindmaps.model.Node;
 import org.saidone.mindmaps.repository.MindMapRepository;
@@ -49,6 +50,8 @@ public class MindMapService {
     private final NodeRepository nodeRepository;
     private final WikimediaImageSearchService wikimediaImageSearchService;
 
+    private final NodeMapper nodeMapper;
+
     public List<MindMap> findAll() {
         return mindMapRepository.findAll().stream()
                 .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
@@ -61,7 +64,7 @@ public class MindMapService {
         dto.setId(map.getId());
         dto.setTitle(map.getTitle());
         dto.setStylePreset(normalizeStylePreset(map.getStylePreset()));
-        dto.setNodes(nodeRepository.findByMapIdOrderByIdAsc(id).stream().map(this::toDto).toList());
+        dto.setNodes(nodeRepository.findByMapIdOrderByIdAsc(id).stream().map(nodeMapper::toDto).toList());
         return dto;
     }
 
@@ -144,11 +147,6 @@ public class MindMapService {
     }
 
     @Transactional
-    public MindMap createFromGeneratedMap(MindMapDto generatedMap) {
-        return createFromGeneratedMap(generatedMap, false);
-    }
-
-    @Transactional
     public MindMap createFromGeneratedMap(MindMapDto generatedMap, boolean searchWikimediaImages) {
         val title = generatedMap.getTitle() == null || generatedMap.getTitle().isBlank()
                 ? "Mappa generata con AI"
@@ -215,7 +213,7 @@ public class MindMapService {
         node.setImageHeight(normalizeImageSize(request.getImageHeight()));
         node.setNodeWidth(normalizeNodeWidth(request.getNodeWidth()));
         node.setNodeHeight(normalizeNodeHeight(request.getNodeHeight()));
-        return toDto(nodeRepository.save(node));
+        return nodeMapper.toDto(nodeRepository.save(node));
     }
 
     @Transactional
@@ -241,7 +239,7 @@ public class MindMapService {
         if (request.getNodeWidth() != null) node.setNodeWidth(normalizeNodeWidth(request.getNodeWidth()));
         if (request.getNodeHeight() != null) node.setNodeHeight(normalizeNodeHeight(request.getNodeHeight()));
 
-        return toDto(nodeRepository.save(node));
+        return nodeMapper.toDto(nodeRepository.save(node));
     }
 
     @Transactional
@@ -326,17 +324,17 @@ public class MindMapService {
 
     private Integer normalizeImageSize(Integer imageSize) {
         if (imageSize == null) return null;
-        return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, imageSize));
+        return Math.clamp(imageSize, MIN_IMAGE_SIZE, MAX_IMAGE_SIZE);
     }
 
     private Integer normalizeNodeWidth(Integer nodeWidth) {
         if (nodeWidth == null) return null;
-        return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, nodeWidth));
+        return Math.clamp(nodeWidth, MIN_NODE_WIDTH, MAX_NODE_WIDTH);
     }
 
     private Integer normalizeNodeHeight(Integer nodeHeight) {
         if (nodeHeight == null) return null;
-        return Math.min(MAX_NODE_HEIGHT, Math.max(MIN_NODE_HEIGHT, nodeHeight));
+        return Math.clamp(nodeHeight, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT);
     }
 
     private String normalizeNodeEmoji(String emoji) {
@@ -370,26 +368,4 @@ public class MindMapService {
         };
     }
 
-    private NodeDto toDto(Node node) {
-        val dto = new NodeDto();
-        dto.setId(node.getId());
-        dto.setParentId(node.getParentId());
-        dto.setText(node.getText());
-        dto.setDescription(node.getDescription());
-        dto.setEmoji(node.getEmoji());
-        dto.setBranchText(node.getBranchText());
-        dto.setX(node.getX());
-        dto.setY(node.getY());
-        dto.setColor(node.getColor());
-        dto.setFontSize(node.getFontSize());
-        dto.setShape(node.getShape());
-        dto.setBranchColor(node.getBranchColor());
-        dto.setBranchStyle(node.getBranchStyle());
-        dto.setImageUri(node.getImageUri());
-        dto.setImageWidth(node.getImageWidth());
-        dto.setImageHeight(node.getImageHeight());
-        dto.setNodeWidth(node.getNodeWidth());
-        dto.setNodeHeight(node.getNodeHeight());
-        return dto;
-    }
 }

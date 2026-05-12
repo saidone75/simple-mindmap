@@ -74,10 +74,9 @@ public class MindMapPageController {
                                RedirectAttributes redirectAttributes) {
         val request = new MapGenerationRequestDto();
         request.setTopic(topic);
-        request.setNumberOfNodes(8);
         request.setMaxDepth(Math.clamp(maxDepth, 1, 6));
         request.setIncludeBranchText(includeBranchText);
-        request.setSearchWikimediaImages(searchWikimediaImages);
+        request.setIncludeWikimediaImages(searchWikimediaImages);
         try {
             val generated = mapGenerationApplicationService.generateMindMap(request);
             val map = mindMapService.createFromGeneratedMap(generated, searchWikimediaImages);

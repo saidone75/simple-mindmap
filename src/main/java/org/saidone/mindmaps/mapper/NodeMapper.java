@@ -13,19 +13,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * alolong with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.saidone.mindmaps.dto;
+package org.saidone.mindmaps.mapper;
 
-import lombok.Data;
+import org.mapstruct.Mapper;
+import org.saidone.mindmaps.dto.NodeDto;
+import org.saidone.mindmaps.model.Node;
 
-@Data
-public class MapGenerationRequestDto {
-    private String topic;
-    private Integer numberOfNodes;
-    private Integer maxDepth;
-    private String referenceText;
-    private Boolean includeBranchText;
-    private Boolean includeWikimediaImages;
+@Mapper(componentModel = "spring")
+public interface NodeMapper {
+
+    NodeDto toDto(Node node);
+
 }
