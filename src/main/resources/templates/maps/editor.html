@@ -29,7 +29,10 @@
     <header class="editor-topbar">
         <div>
             <a class="back-link" th:href="@{/maps}">← Torna alle mappe</a>
-            <h1 th:text="${map.title}">Titolo mappa</h1>
+            <div class="map-title-row">
+                <h1 id="map-title" th:text="${map.title}">Titolo mappa</h1>
+                <button type="button" id="rename-map-btn" class="icon-btn" title="Rinomina mappa" aria-label="Rinomina mappa">✏️</button>
+            </div>
         </div>
         <div class="topbar-actions">
             <button type="button" id="add-root-btn">Aggiungi nodo</button>

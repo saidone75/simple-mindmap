@@ -96,6 +96,8 @@ const appDialogMessage = document.getElementById("app-dialog-message");
 const appDialogInput = document.getElementById("app-dialog-input");
 const appDialogCancel = document.getElementById("app-dialog-cancel");
 const appDialogConfirm = document.getElementById("app-dialog-confirm");
+const mapTitle = document.getElementById("map-title");
+const renameMapBtn = document.getElementById("rename-map-btn");
 
 const showLoading = globalThis.window?.showLoading ?? function showLoading(msg) {
     let el = document.getElementById('loading-overlay');
@@ -1591,6 +1593,9 @@ if (gridSizeInput) {
         render();
     });
 }
+if (renameMapBtn) {
+    renameMapBtn.addEventListener("click", () => renameMap());
+}
 
 if (canvasPanel) {
     svg.addEventListener("mousedown", startCanvasPan);
@@ -1695,6 +1700,34 @@ async function flushAutosave() {
 async function fetchMap() {
     const response = await fetch(`/api/maps/${state.map.id}`);
     return response.json();
+}
+
+async function updateMapTitle(title) {
+    const response = await fetch(`/api/maps/${state.map.id}/title`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title })
+    });
+    return response.json();
+}
+
+function refreshMapTitle() {
+    const normalizedTitle = (state.map.title || "").trim() || "Nuova mappa";
+    if (mapTitle) mapTitle.textContent = normalizedTitle;
+    document.title = normalizedTitle;
+}
+
+async function renameMap() {
+    const value = await openDialog({
+        title: "Rinomina mappa",
+        message: "Inserisci il nuovo titolo della mappa.",
+        mode: "prompt",
+        value: state.map.title || ""
+    });
+    if (value === null) return;
+    const updatedMap = await updateMapTitle(value);
+    state.map.title = updatedMap.title;
+    refreshMapTitle();
 }
 
 function startImageUploadForNode(nodeId) {
@@ -2059,6 +2092,7 @@ document.addEventListener("keydown", async event => {
 });
 
 state.map.stylePreset = getCurrentStylePresetName();
+refreshMapTitle();
 if (stylePresetInput) {
     stylePresetInput.value = state.map.stylePreset;
     const onPresetChange = async () => {
