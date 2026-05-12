@@ -266,6 +266,15 @@ public class MindMapService {
         return findMapWithNodes(mapId);
     }
 
+    @Transactional
+    public MindMapDto updateMapTitle(Long mapId, String title) {
+        val map = getMap(mapId);
+        val normalizedTitle = title == null || title.trim().isBlank() ? "Nuova mappa" : title.trim();
+        map.setTitle(normalizedTitle);
+        mindMapRepository.save(map);
+        return findMapWithNodes(mapId);
+    }
+
     private void deleteRecursive(Long nodeId, List<Node> allNodes) {
         for (val child : allNodes.stream().filter(n -> nodeId.equals(n.getParentId())).toList()) {
             deleteRecursive(child.getId(), allNodes);

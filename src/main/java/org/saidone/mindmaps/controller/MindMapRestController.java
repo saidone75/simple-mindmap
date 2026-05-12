@@ -57,6 +57,11 @@ public class MindMapRestController {
         return mindMapService.updateMapStyle(id, request.getStylePreset());
     }
 
+    @PutMapping("/maps/{id}/title")
+    public MindMapDto updateMapTitle(@PathVariable Long id, @RequestBody UpdateMapTitleRequest request) {
+        return mindMapService.updateMapTitle(id, request.getTitle());
+    }
+
     @DeleteMapping("/nodes/{nodeId}")
     public void deleteNode(@PathVariable Long nodeId) {
         mindMapService.deleteNode(nodeId);

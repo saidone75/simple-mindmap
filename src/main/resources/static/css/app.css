@@ -76,6 +76,25 @@ button:hover { background: var(--accent-dark); }
 }
 .hero-card, .section-card { padding: 24px; margin-bottom: 20px; }
 .hero-card h1, .editor-topbar h1 { margin: 0 0 8px; font-size: 2rem; }
+.map-title-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.map-title-row h1 {
+    margin-bottom: 0;
+}
+.icon-btn {
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: 1rem;
+    line-height: 1;
+    background: #edf3ff;
+    color: var(--accent-dark);
+}
+.icon-btn:hover {
+    background: #dfeaff;
+}
 .hero-card p { margin: 0; color: var(--muted); font-size: 1.05rem; }
 .create-form label, .side-panel label {
     display: block;
