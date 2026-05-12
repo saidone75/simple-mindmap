@@ -324,17 +324,17 @@ public class MindMapService {
 
     private Integer normalizeImageSize(Integer imageSize) {
         if (imageSize == null) return null;
-        return Math.min(MAX_IMAGE_SIZE, Math.max(MIN_IMAGE_SIZE, imageSize));
+        return Math.clamp(imageSize, MIN_IMAGE_SIZE, MAX_IMAGE_SIZE);
     }
 
     private Integer normalizeNodeWidth(Integer nodeWidth) {
         if (nodeWidth == null) return null;
-        return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, nodeWidth));
+        return Math.clamp(nodeWidth, MIN_NODE_WIDTH, MAX_NODE_WIDTH);
     }
 
     private Integer normalizeNodeHeight(Integer nodeHeight) {
         if (nodeHeight == null) return null;
-        return Math.min(MAX_NODE_HEIGHT, Math.max(MIN_NODE_HEIGHT, nodeHeight));
+        return Math.clamp(nodeHeight, MIN_NODE_HEIGHT, MAX_NODE_HEIGHT);
     }
 
     private String normalizeNodeEmoji(String emoji) {
