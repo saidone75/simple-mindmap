@@ -71,22 +71,17 @@ public class MapGenerationApplicationService {
     }
 
     private void validateRequestLimits(MapGenerationRequestDto request) {
-        if (request == null || request.getNumberOfNodes() == null) {
+        if (request == null) {
             throw new IllegalStateException("Richiesta di generazione non valida.");
         }
         if (!StringUtils.hasText(request.getTopic())) {
             throw new IllegalStateException("Inserisci un argomento o una breve descrizione.");
         }
         request.setTopic(request.getTopic().trim());
-
-        int effectiveMaxNodes = Math.max(1, maxNodesPerRequest);
         if (request.getMaxDepth() == null) {
             request.setMaxDepth(3);
         }
-        request.setMaxDepth(Math.max(2, Math.min(request.getMaxDepth(), 6)));
-        if (request.getNumberOfNodes() > effectiveMaxNodes) {
-            throw new IllegalStateException(String.format("Numero massimo nodi superato. Limite: %d", effectiveMaxNodes));
-        }
+        request.setMaxDepth(Math.clamp(request.getMaxDepth(), 2, 6));
     }
 
     private void applyReferenceTextLimit(MapGenerationRequestDto request) {
