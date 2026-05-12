@@ -38,12 +38,12 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 @RequiredArgsConstructor
 @Service
 public class MindMapService {
-    private static final int MIN_IMAGE_SIZE = 24;
-    private static final int MAX_IMAGE_SIZE = 240;
+    private static final int MIN_IMAGE_SIZE = 30;
+    private static final int MAX_IMAGE_SIZE = 1000;
     private static final int MIN_NODE_WIDTH = 120;
-    private static final int MAX_NODE_WIDTH = 720;
+    private static final int MAX_NODE_WIDTH = 1000;
     private static final int MIN_NODE_HEIGHT = 60;
-    private static final int MAX_NODE_HEIGHT = 420;
+    private static final int MAX_NODE_HEIGHT = 1000;
     private static final String DEFAULT_STYLE_PRESET = "CLASSIC";
 
     private final MindMapRepository mindMapRepository;

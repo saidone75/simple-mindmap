@@ -131,7 +131,6 @@ public class OpenAiMapGenerationService implements MapGenerationService {
 
                 Vincoli:
                 - Argomento: %s
-                - Numero nodi contenuto (escluso nodo principale): %d
                 - Profondità massima della mappa (livelli gerarchici): %d
                 - Il primo nodo rappresenta il tema centrale.
                 - text deve essere sempre un titolo breve (2-6 parole).
@@ -159,7 +158,6 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 %s
                 """.formatted(
                 request.getTopic(),
-                request.getNumberOfNodes(),
                 request.getMaxDepth() == null ? 3 : request.getMaxDepth(),
                 includeBranchText
                         ? "branchText deve essere una breve nota utile (non usare qui la descrizione principale)."

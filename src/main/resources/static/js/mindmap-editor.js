@@ -1256,6 +1256,7 @@ document.addEventListener("mousemove", event => {
 document.addEventListener("mouseup", () => {
     const wasDragging = !!state.drag;
     const dragMoved = !!state.drag?.moved;
+    const resizeState = state.resize ? { ...state.resize } : null;
     if (state.drag || state.resize) {
         commitInteractionSnapshot();
     }
@@ -1279,6 +1280,16 @@ document.addEventListener("mouseup", () => {
     }
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
     if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
+
+    if (resizeState) {
+        const resizedNode = getNodeById(resizeState.nodeId);
+        if (resizedNode) {
+            clearTimeout(state.autosaveTimer);
+            state.autosaveTimer = null;
+            state.autosaveNodeId = null;
+            runAutosave(resizedNode);
+        }
+    }
 });
 
 document.addEventListener("click", event => {
@@ -1649,14 +1660,22 @@ function scheduleAutosave(node) {
 }
 
 function runAutosave(node) {
-    const promise = saveNode(node).finally(() => {
-        if (state.autosavePromise === promise) {
+    const nodeSnapshot = structuredClone(node);
+    const startFrom = state.autosavePromise ?? Promise.resolve();
+    const queuedPromise = startFrom
+        .catch(() => {})
+        .then(() => saveNode(nodeSnapshot));
+
+    const trackedPromise = queuedPromise.finally(() => {
+        if (state.autosavePromise === trackedPromise) {
             state.autosavePromise = null;
         }
     });
-    state.autosavePromise = promise;
-    return promise;
+    state.autosavePromise = trackedPromise;
+
+    return trackedPromise;
 }
+
 
 async function flushAutosave() {
     if (state.autosaveTimer && state.autosaveNodeId != null) {
