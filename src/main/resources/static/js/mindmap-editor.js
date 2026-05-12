@@ -689,7 +689,7 @@ function render() {
 function openContextMenu(event, nodeId) {
     event.preventDefault();
     event.stopPropagation();
-    selectNode(nodeId);
+    selectNode(nodeId, { showNodeOverlay: false });
     closeContextMenu();
 
     const content = document.createElement("div");
@@ -1265,9 +1265,12 @@ document.addEventListener("mouseup", () => {
     state.interactionViewport = null;
     svg.classList.remove("is-panning");
     applyCanvasViewport();
+    const justOpenedContextMenu = state.contextMenu && (Date.now() - state.contextMenu.openedAt) < 250;
     const selectedNode = getNodeById(state.selectedNodeId);
     if (selectedNode) {
         if (wasDragging && dragMoved) {
+            hideNodeEditorOverlay();
+        } else if (justOpenedContextMenu) {
             hideNodeEditorOverlay();
         } else {
             if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
