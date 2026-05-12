@@ -1281,7 +1281,7 @@ document.addEventListener("mouseup", () => {
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
     if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
 
-    if (resizeState?.mode === "image") {
+    if (resizeState) {
         const resizedNode = getNodeById(resizeState.nodeId);
         if (resizedNode) {
             clearTimeout(state.autosaveTimer);

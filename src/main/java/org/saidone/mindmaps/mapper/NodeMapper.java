@@ -19,12 +19,17 @@
 package org.saidone.mindmaps.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.saidone.mindmaps.dto.NodeDto;
 import org.saidone.mindmaps.model.Node;
 
 @Mapper(componentModel = "spring")
 public interface NodeMapper {
 
+    @Mapping(target = "imageWidth", source = "imageWidth")
+    @Mapping(target = "imageHeight", source = "imageHeight")
+    @Mapping(target = "nodeWidth", source = "nodeWidth")
+    @Mapping(target = "nodeHeight", source = "nodeHeight")
+    @Mapping(target = "imageKeywords", ignore = true)
     NodeDto toDto(Node node);
-
 }
