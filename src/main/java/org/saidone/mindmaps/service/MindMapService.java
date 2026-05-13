@@ -19,6 +19,7 @@
 package org.saidone.mindmaps.service;
 
 import com.google.gson.Gson;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
@@ -27,12 +28,10 @@ import org.saidone.mindmaps.model.MindMap;
 import org.saidone.mindmaps.model.Node;
 import org.saidone.mindmaps.repository.MindMapRepository;
 import org.saidone.mindmaps.repository.NodeRepository;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
