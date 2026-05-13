@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -224,25 +225,39 @@ public class MindMapService {
         val node = nodeRepository.findById(nodeId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
 
-        if (request.getText() != null)
-            node.setText(request.getText().trim().isEmpty() ? "Nodo" : request.getText().trim());
-        if (request.getDescription() != null) node.setDescription(normalizeNodeDescription(request.getDescription()));
-        if (request.getEmoji() != null) node.setEmoji(normalizeNodeEmoji(request.getEmoji()));
-        if (request.getBranchText() != null) node.setBranchText(normalizeBranchText(request.getBranchText()));
-        if (request.getX() != null) node.setX(request.getX());
-        if (request.getY() != null) node.setY(request.getY());
-        if (request.getColor() != null) node.setColor(request.getColor());
-        if (request.getFontSize() != null) node.setFontSize(request.getFontSize());
-        if (request.getShape() != null) node.setShape(request.getShape());
-        if (request.getBranchColor() != null) node.setBranchColor(request.getBranchColor());
-        if (request.getBranchStyle() != null) node.setBranchStyle(request.getBranchStyle());
-        if (request.getImageUri() != null) node.setImageUri(normalizeImageUri(request.getImageUri()));
-        if (request.getImageWidth() != null) node.setImageWidth(normalizeImageSize(request.getImageWidth()));
-        if (request.getImageHeight() != null) node.setImageHeight(normalizeImageSize(request.getImageHeight()));
-        if (request.getNodeWidth() != null) node.setNodeWidth(normalizeNodeWidth(request.getNodeWidth()));
-        if (request.getNodeHeight() != null) node.setNodeHeight(normalizeNodeHeight(request.getNodeHeight()));
+        applyNodeUpdate(node, request);
 
         return nodeMapper.toDto(nodeRepository.save(node));
+    }
+
+    private void applyNodeUpdate(Node node, UpdateNodeRequest request) {
+        updateIfPresent(request.getText(), value -> node.setText(normalizeNodeText(value)));
+        updateIfPresent(request.getDescription(), value -> node.setDescription(normalizeNodeDescription(value)));
+        updateIfPresent(request.getEmoji(), value -> node.setEmoji(normalizeNodeEmoji(value)));
+        updateIfPresent(request.getBranchText(), value -> node.setBranchText(normalizeBranchText(value)));
+        updateIfPresent(request.getX(), node::setX);
+        updateIfPresent(request.getY(), node::setY);
+        updateIfPresent(request.getColor(), node::setColor);
+        updateIfPresent(request.getFontSize(), node::setFontSize);
+        updateIfPresent(request.getShape(), node::setShape);
+        updateIfPresent(request.getBranchColor(), node::setBranchColor);
+        updateIfPresent(request.getBranchStyle(), node::setBranchStyle);
+        updateIfPresent(request.getImageUri(), value -> node.setImageUri(normalizeImageUri(value)));
+        updateIfPresent(request.getImageWidth(), value -> node.setImageWidth(normalizeImageSize(value)));
+        updateIfPresent(request.getImageHeight(), value -> node.setImageHeight(normalizeImageSize(value)));
+        updateIfPresent(request.getNodeWidth(), value -> node.setNodeWidth(normalizeNodeWidth(value)));
+        updateIfPresent(request.getNodeHeight(), value -> node.setNodeHeight(normalizeNodeHeight(value)));
+    }
+
+    private <T> void updateIfPresent(T value, Consumer<T> updater) {
+        if (value != null) {
+            updater.accept(value);
+        }
+    }
+
+    private String normalizeNodeText(String text) {
+        val normalized = text.trim();
+        return normalized.isEmpty() ? "Nodo" : normalized;
     }
 
     @Transactional
@@ -253,7 +268,6 @@ public class MindMapService {
         val mapNodes = nodeRepository.findByMapIdOrderByIdAsc(node.getMapId());
         deleteRecursive(nodeId, mapNodes);
     }
-
 
     @Transactional
     public MindMap cloneMap(Long mapId) {
