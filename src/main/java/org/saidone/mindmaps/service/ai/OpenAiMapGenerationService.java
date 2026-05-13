@@ -141,7 +141,7 @@ public class OpenAiMapGenerationService implements MapGenerationService {
                 - imageUri deve essere sempre stringa vuota.
                 - imageKeywords deve contenere 2-6 keyword in inglese, separate da virgola, in ordine di importanza (la più importante per prima), pensate per cercare immagini su Wikimedia Commons.
                 - parentId: null solo per il nodo principale (primo elemento).
-                - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista (mai un ID database).
+                - Per gli altri nodi, parentId deve contenere l'indice (0-based) di un nodo precedente nella lista.
                 - Struttura gerarchica obbligatoria: radice -> figli -> nipoti -> livelli successivi.
                 - Albero n-ario: sia la radice sia ogni figlio possono avere più figli (0..n).
                 - Evita collegamenti incrociati o riassegnazioni ambigue: ogni nodo deve avere un solo parentId.
