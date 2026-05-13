@@ -1381,7 +1381,7 @@ imageWidthInput.addEventListener("input", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
     node.imageWidth = clampImageSize(Number(imageWidthInput?.value ?? node.imageWidth));
-    if (imageWidthInput) imageWidthInput.value = node.imageWidth;
+    imageWidthInput.value = node.imageWidth;
     updateImageSizeLabels();
     render();
     if (nodeEditorOverlay) {
@@ -1396,7 +1396,7 @@ imageHeightInput.addEventListener("input", () => {
     const node = getNodeById(state.selectedNodeId);
     if (!node) return;
     node.imageHeight = clampImageSize(Number(imageHeightInput?.value ?? node.imageHeight));
-    if (imageHeightInput) imageHeightInput.value = node.imageHeight;
+    imageHeightInput.value = node.imageHeight;
     updateImageSizeLabels();
     render();
     if (nodeEditorOverlay) {
