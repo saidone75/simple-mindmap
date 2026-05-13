@@ -93,6 +93,13 @@ public class MindMapPageController {
         return "maps/editor";
     }
 
+    @PostMapping("/{id}/clone")
+    public String clone(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        val clonedMap = mindMapService.cloneMap(id);
+        redirectAttributes.addFlashAttribute("message", "Mappa clonata.");
+        return String.format("redirect:/maps/%s", clonedMap.getId());
+    }
+
     @PostMapping("/{id}/delete")
     public String delete(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         mindMapService.deleteMap(id);

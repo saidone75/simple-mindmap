@@ -251,6 +251,55 @@ public class MindMapService {
         deleteRecursive(nodeId, mapNodes);
     }
 
+
+    @Transactional
+    public MindMap cloneMap(Long mapId) {
+        val sourceMap = getMap(mapId);
+        val sourceNodes = nodeRepository.findByMapIdOrderByIdAsc(mapId);
+
+        val clonedMap = new MindMap();
+        clonedMap.setTitle(sourceMap.getTitle() + " (Copia)");
+        clonedMap.setStylePreset(normalizeStylePreset(sourceMap.getStylePreset()));
+        val savedMap = mindMapRepository.save(clonedMap);
+
+        val clonedBySourceId = new java.util.HashMap<Long, Node>();
+
+        for (val sourceNode : sourceNodes) {
+            val clonedNode = new Node();
+            clonedNode.setMapId(savedMap.getId());
+            clonedNode.setParentId(null);
+            clonedNode.setText(sourceNode.getText());
+            clonedNode.setDescription(sourceNode.getDescription());
+            clonedNode.setEmoji(sourceNode.getEmoji());
+            clonedNode.setBranchText(sourceNode.getBranchText());
+            clonedNode.setX(sourceNode.getX());
+            clonedNode.setY(sourceNode.getY());
+            clonedNode.setColor(sourceNode.getColor());
+            clonedNode.setFontSize(sourceNode.getFontSize());
+            clonedNode.setShape(sourceNode.getShape());
+            clonedNode.setBranchColor(sourceNode.getBranchColor());
+            clonedNode.setBranchStyle(sourceNode.getBranchStyle());
+            clonedNode.setImageUri(sourceNode.getImageUri());
+            clonedNode.setImageWidth(sourceNode.getImageWidth());
+            clonedNode.setImageHeight(sourceNode.getImageHeight());
+            clonedNode.setNodeWidth(sourceNode.getNodeWidth());
+            clonedNode.setNodeHeight(sourceNode.getNodeHeight());
+
+            val savedNode = nodeRepository.save(clonedNode);
+            clonedBySourceId.put(sourceNode.getId(), savedNode);
+        }
+
+        for (val sourceNode : sourceNodes) {
+            if (sourceNode.getParentId() == null) continue;
+            val clonedNode = clonedBySourceId.get(sourceNode.getId());
+            val clonedParent = clonedBySourceId.get(sourceNode.getParentId());
+            clonedNode.setParentId(clonedParent == null ? null : clonedParent.getId());
+            nodeRepository.save(clonedNode);
+        }
+
+        return savedMap;
+    }
+
     @Transactional
     public void deleteMap(Long id) {
         getMap(id);

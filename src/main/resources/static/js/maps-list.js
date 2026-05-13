@@ -64,6 +64,22 @@
         });
     };
 
+
+    const bindCloneMapConfirm = function () {
+        const forms = document.querySelectorAll(".clone-map-form");
+        forms.forEach((form) => {
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                const confirmed = await openDialog({
+                    title: "Clonare la mappa?",
+                    message: "Verrà creata una copia completa della mappa.",
+                    mode: "confirm"
+                });
+                if (confirmed) form.submit();
+            });
+        });
+    };
+
     const bindDeleteMapConfirm = function () {
         const forms = document.querySelectorAll(".delete-map-form");
         forms.forEach((form) => {
@@ -82,10 +98,12 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             bindAiGenerateLoading();
+            bindCloneMapConfirm();
             bindDeleteMapConfirm();
         }, { once: true });
     } else {
         bindAiGenerateLoading();
+        bindCloneMapConfirm();
         bindDeleteMapConfirm();
     }
 })();

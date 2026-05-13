@@ -96,6 +96,9 @@
                 <p>Ultima modifica: <span th:text="${#temporals.format(map.updatedAt, 'dd/MM/yyyy HH:mm')}"></span></p>
                 <div class="card-actions">
                     <a class="secondary-btn" th:href="@{/maps/{id}(id=${map.id})}">Apri</a>
+                    <form th:action="@{/maps/{id}/clone(id=${map.id})}" method="post" class="clone-map-form">
+                        <button class="secondary-btn" type="submit">Clona</button>
+                    </form>
                     <form th:action="@{/maps/{id}/delete(id=${map.id})}" method="post" class="delete-map-form">
                         <button class="danger-btn" type="submit">Elimina</button>
                     </form>
