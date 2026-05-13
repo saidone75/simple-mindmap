@@ -1052,7 +1052,7 @@ function getNodeDisplayLines(node, maxLineLength) {
     const titleLines = wrapTextByWords(title, maxLineLength).map(line => ({ text: line, isDescription: false }));
     const descriptionLines = description
         ? wrapTextByWords(description, Math.max(12, maxLineLength + 6))
-            .map((line, idx) => ({ text: idx === 0 ? `— ${line}` : line, isDescription: true }))
+            .map(line => ({ text: line, isDescription: true }))
         : [];
     return [...titleLines, ...descriptionLines];
 }
