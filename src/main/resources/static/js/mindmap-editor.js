@@ -1298,7 +1298,7 @@ document.addEventListener("click", event => {
     const justOpenedContextMenu = state.contextMenu && (Date.now() - state.contextMenu.openedAt) < 200;
     if (justOpenedContextMenu) return;
     if (event.target.closest(".node-context-menu")) return;
-    if (!event.target.closest(".node-editor-overlay") && !event.target.closest(".node-group")) {
+    if (!event.target.closest(".node-editor-overlay") && !event.target.closest(".image-editor-overlay") && !event.target.closest(".node-group")) {
         if (event.target === svg || event.target.closest(".canvas-scroll-area") || event.target.closest(".canvas-panel")) {
             hideNodeEditorOverlay();
             hideImageEditorOverlay();
