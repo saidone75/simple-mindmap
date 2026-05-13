@@ -48,6 +48,9 @@ public class MindMapService {
     private static final int MIN_NODE_HEIGHT = 60;
     private static final int MAX_NODE_HEIGHT = 1000;
     private static final String DEFAULT_STYLE_PRESET = "CLASSIC";
+    private static final String DEFAULT_ROOT_NODE_COLOR = "var(--node-color-root)";
+    private static final String DEFAULT_NODE_COLOR = "var(--node-color-default)";
+    private static final String DEFAULT_BRANCH_COLOR = "var(--connector)";
 
     private final MindMapRepository mindMapRepository;
     private final NodeRepository nodeRepository;
@@ -87,10 +90,10 @@ public class MindMapService {
         root.setBranchText(null);
         root.setX(620);
         root.setY(260);
-        root.setColor("#FFD966");
+        root.setColor(DEFAULT_ROOT_NODE_COLOR);
         root.setFontSize(22);
         root.setShape("ROUNDED");
-        root.setBranchColor("#7c8a9a");
+        root.setBranchColor(DEFAULT_BRANCH_COLOR);
         root.setBranchStyle("SOLID");
         root.setImageUri(null);
         root.setImageWidth(null);
@@ -116,32 +119,32 @@ public class MindMapService {
         map.setStylePreset(DEFAULT_STYLE_PRESET);
         val saved = mindMapRepository.save(map);
 
-        val root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, "#FFD966");
+        val root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, DEFAULT_ROOT_NODE_COLOR);
 
         switch (templateKey) {
             case "italiano" -> {
-                createNode(saved.getId(), root.getId(), "Grammatica", "Regole e strutture della lingua.", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Lettura", "Comprensione e analisi dei testi.", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Scrittura", "Produzione di testi chiari e coerenti.", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Lessico", "Arricchimento del vocabolario.", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Grammatica", "Regole e strutture della lingua.", 320, 120, DEFAULT_NODE_COLOR);
+                createNode(saved.getId(), root.getId(), "Lettura", "Comprensione e analisi dei testi.", 930, 120, "var(--node-color-template-green)");
+                createNode(saved.getId(), root.getId(), "Scrittura", "Produzione di testi chiari e coerenti.", 320, 420, "var(--node-color-template-red)");
+                createNode(saved.getId(), root.getId(), "Lessico", "Arricchimento del vocabolario.", 930, 420, "var(--node-color-template-orange)");
             }
             case "scienze" -> {
-                createNode(saved.getId(), root.getId(), "Animali", "Classificazione e caratteristiche principali.", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Piante", "Strutture e funzioni essenziali.", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Corpo umano", "Sistemi e organi principali.", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Esperimenti", "Attività pratiche per osservare fenomeni.", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Animali", "Classificazione e caratteristiche principali.", 320, 120, DEFAULT_NODE_COLOR);
+                createNode(saved.getId(), root.getId(), "Piante", "Strutture e funzioni essenziali.", 930, 120, "var(--node-color-template-green)");
+                createNode(saved.getId(), root.getId(), "Corpo umano", "Sistemi e organi principali.", 320, 420, "var(--node-color-template-red)");
+                createNode(saved.getId(), root.getId(), "Esperimenti", "Attività pratiche per osservare fenomeni.", 930, 420, "var(--node-color-template-orange)");
             }
             case "storia" -> {
-                createNode(saved.getId(), root.getId(), "Linea del tempo", "Sequenza cronologica degli eventi.", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Personaggi", "Figure storiche rilevanti.", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Linea del tempo", "Sequenza cronologica degli eventi.", 320, 120, DEFAULT_NODE_COLOR);
+                createNode(saved.getId(), root.getId(), "Personaggi", "Figure storiche rilevanti.", 930, 120, "var(--node-color-template-green)");
+                createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, "var(--node-color-template-red)");
+                createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, "var(--node-color-template-orange)");
             }
             case "geografia" -> {
-                createNode(saved.getId(), root.getId(), "Montagne", "Rilievi e caratteristiche.", 320, 120, "#9FC5E8");
-                createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, "#B6D7A8");
-                createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, "#F4CCCC");
-                createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, "#F9CB9C");
+                createNode(saved.getId(), root.getId(), "Montagne", "Rilievi e caratteristiche.", 320, 120, DEFAULT_NODE_COLOR);
+                createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, "var(--node-color-template-green)");
+                createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, "var(--node-color-template-red)");
+                createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, "var(--node-color-template-orange)");
             }
             default -> {
             }
@@ -177,7 +180,7 @@ public class MindMapService {
                     normalizeNodeDescription(nodeDto.getDescription()),
                     nodeDto.getX() != null ? nodeDto.getX() : 620,
                     nodeDto.getY() != null ? nodeDto.getY() : 260,
-                    nodeDto.getColor() != null ? nodeDto.getColor() : "#9FC5E8"
+                    nodeDto.getColor() != null ? nodeDto.getColor() : DEFAULT_NODE_COLOR
             );
             node.setEmoji(normalizeNodeEmoji(nodeDto.getEmoji()));
             node.setBranchText(normalizeBranchText(nodeDto.getBranchText()));
@@ -206,10 +209,10 @@ public class MindMapService {
         node.setBranchText(normalizeBranchText(request.getBranchText()));
         node.setX(request.getX() == null ? 300 : request.getX());
         node.setY(request.getY() == null ? 200 : request.getY());
-        node.setColor(request.getColor() == null ? "#9FC5E8" : request.getColor());
+        node.setColor(request.getColor() == null ? DEFAULT_NODE_COLOR : request.getColor());
         node.setFontSize(request.getFontSize() == null ? 18 : request.getFontSize());
         node.setShape(request.getShape() == null ? "ROUNDED" : request.getShape());
-        node.setBranchColor(request.getBranchColor() == null ? "#7c8a9a" : request.getBranchColor());
+        node.setBranchColor(request.getBranchColor() == null ? DEFAULT_BRANCH_COLOR : request.getBranchColor());
         node.setBranchStyle(request.getBranchStyle() == null ? "SOLID" : request.getBranchStyle());
         node.setImageUri(normalizeImageUri(request.getImageUri()));
         node.setImageWidth(normalizeImageSize(request.getImageWidth()));
@@ -281,7 +284,7 @@ public class MindMapService {
 
         val gson = new Gson();
 
-        sourceNodes.parallelStream().forEach(
+        sourceNodes.forEach(
                 sourceNode -> {
                     val clonedNode = gson.fromJson(gson.toJson(sourceNode), Node.class);
                     clonedNode.setId(null);
@@ -292,7 +295,7 @@ public class MindMapService {
                 }
         );
 
-        sourceNodes.parallelStream().forEach(
+        sourceNodes.forEach(
                 sourceNode -> {
                     if (sourceNode.getParentId() != null) {
                         val clonedNode = clonedBySourceId.get(sourceNode.getId());
@@ -350,7 +353,7 @@ public class MindMapService {
         node.setColor(color);
         node.setFontSize(parentId == null ? 22 : 18);
         node.setShape("ROUNDED");
-        node.setBranchColor("#7c8a9a");
+        node.setBranchColor(DEFAULT_BRANCH_COLOR);
         node.setBranchStyle("SOLID");
         node.setImageUri(null);
         node.setImageWidth(null);
