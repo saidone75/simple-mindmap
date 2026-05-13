@@ -144,7 +144,11 @@
 <script th:inline="javascript">
     const initialMap = /*[[${map}]]*/ {};
 </script>
-<script src="https://unpkg.com/@floating-ui/dom@1.6.13"></script>
+<script
+        src="https://unpkg.com/@floating-ui/dom@1.6.13"
+        crossorigin="anonymous"
+        integrity="sha384-84699ee0a7fc161de3b359f39e134432d96863fe907b7b0e3bad872496f8b6c23302b315ca05e048cd28cf8ec978a6a7">
+</script>
 <script th:src="@{/js/loading-overlay.js}"></script>
 <script th:src="@{/js/mindmap-editor.js}"></script>
 </body>
