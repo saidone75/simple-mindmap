@@ -37,9 +37,6 @@ public class MapGenerationApplicationService {
 
     private final MapGenerationService mapGenerationService;
 
-    @Value("${app.ai.generation.max-nodes:20}")
-    private int maxNodesPerRequest;
-
     @Value("${app.ai.generation.max-attachment-chars:60000}")
     private int maxAttachmentChars;
 
@@ -115,14 +112,14 @@ public class MapGenerationApplicationService {
 
     private void enforceDepth(MindMapDto generated, Integer requestedMaxDepth) {
         int targetDepth = requestedMaxDepth == null ? 3 : requestedMaxDepth;
-        targetDepth = Math.max(2, Math.min(targetDepth, 6));
+        targetDepth = Math.clamp(targetDepth, 2, 6);
 
         int nodeCount = generated.getNodes().size();
         if (nodeCount <= 1) {
             return;
         }
 
-        generated.getNodes().get(0).setParentId(null);
+        generated.getNodes().getFirst().setParentId(null);
 
         for (int i = 1; i < nodeCount; i++) {
             val node = generated.getNodes().get(i);
