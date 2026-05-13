@@ -18,6 +18,7 @@
 
 package org.saidone.mindmaps.service;
 
+import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
@@ -31,7 +32,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 
@@ -261,41 +264,31 @@ public class MindMapService {
         clonedMap.setTitle(sourceMap.getTitle() + " (Copia)");
         clonedMap.setStylePreset(normalizeStylePreset(sourceMap.getStylePreset()));
         val savedMap = mindMapRepository.save(clonedMap);
+        val clonedBySourceId = new ConcurrentHashMap<Long, Node>();
 
-        val clonedBySourceId = new java.util.HashMap<Long, Node>();
+        val gson = new Gson();
 
-        for (val sourceNode : sourceNodes) {
-            val clonedNode = new Node();
-            clonedNode.setMapId(savedMap.getId());
-            clonedNode.setParentId(null);
-            clonedNode.setText(sourceNode.getText());
-            clonedNode.setDescription(sourceNode.getDescription());
-            clonedNode.setEmoji(sourceNode.getEmoji());
-            clonedNode.setBranchText(sourceNode.getBranchText());
-            clonedNode.setX(sourceNode.getX());
-            clonedNode.setY(sourceNode.getY());
-            clonedNode.setColor(sourceNode.getColor());
-            clonedNode.setFontSize(sourceNode.getFontSize());
-            clonedNode.setShape(sourceNode.getShape());
-            clonedNode.setBranchColor(sourceNode.getBranchColor());
-            clonedNode.setBranchStyle(sourceNode.getBranchStyle());
-            clonedNode.setImageUri(sourceNode.getImageUri());
-            clonedNode.setImageWidth(sourceNode.getImageWidth());
-            clonedNode.setImageHeight(sourceNode.getImageHeight());
-            clonedNode.setNodeWidth(sourceNode.getNodeWidth());
-            clonedNode.setNodeHeight(sourceNode.getNodeHeight());
+        sourceNodes.parallelStream().forEach(
+                sourceNode -> {
+                    val clonedNode = gson.fromJson(gson.toJson(sourceNode), Node.class);
+                    clonedNode.setId(null);
+                    clonedNode.setMapId(savedMap.getId());
+                    clonedNode.setParentId(null);
+                    val savedNode = nodeRepository.save(clonedNode);
+                    clonedBySourceId.put(sourceNode.getId(), savedNode);
+                }
+        );
 
-            val savedNode = nodeRepository.save(clonedNode);
-            clonedBySourceId.put(sourceNode.getId(), savedNode);
-        }
-
-        for (val sourceNode : sourceNodes) {
-            if (sourceNode.getParentId() == null) continue;
-            val clonedNode = clonedBySourceId.get(sourceNode.getId());
-            val clonedParent = clonedBySourceId.get(sourceNode.getParentId());
-            clonedNode.setParentId(clonedParent == null ? null : clonedParent.getId());
-            nodeRepository.save(clonedNode);
-        }
+        sourceNodes.parallelStream().forEach(
+                sourceNode -> {
+                    if (sourceNode.getParentId() != null) {
+                        val clonedNode = clonedBySourceId.get(sourceNode.getId());
+                        val clonedParent = clonedBySourceId.get(sourceNode.getParentId());
+                        clonedNode.setParentId(clonedParent == null ? null : clonedParent.getId());
+                        nodeRepository.save(clonedNode);
+                    }
+                }
+        );
 
         return savedMap;
     }
