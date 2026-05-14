@@ -37,8 +37,13 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -166,20 +171,93 @@ public class MindMapRestController {
             g.draw(new RoundRectangle2D.Float(x, y, nodeW, nodeH, 18, 18));
             if (hasImage(node)) {
                 try {
-                    val nodeImage = ImageIO.read(URI.create(node.getImageUri()).toURL());
+                    val nodeImage = readNodeImage(node.getImageUri());
                     if (nodeImage != null) g.drawImage(nodeImage, x + (nodeW - 42) / 2, y + 12, 42, 42, null);
                 } catch (Exception ignored) { }
             }
+
+            String emoji = normalize(node.getEmoji());
+            int topPadding = 14;
+            if (!emoji.isBlank() && !hasImage(node)) {
+                g.setFont(new Font("Dialog", Font.PLAIN, Math.max(16, node.getFontSize() + 2)));
+                val em = g.getFontMetrics();
+                g.setColor(Color.BLACK);
+                g.drawString(emoji, x + (nodeW - em.stringWidth(emoji)) / 2, y + topPadding + em.getAscent());
+                topPadding += em.getHeight() + 2;
+            } else if (hasImage(node)) {
+                topPadding = 58;
+            }
+
             g.setFont(new Font("SansSerif", Font.BOLD, node.getFontSize()));
             g.setColor(Color.BLACK);
-            val fm = g.getFontMetrics();
-            val text = node.getText() == null ? "" : node.getText();
-            int tx = x + (nodeW - fm.stringWidth(text)) / 2;
-            int ty = hasImage(node) ? (y + nodeH - 18) : (y + 34);
-            g.drawString(text, tx, ty);
+            String title = normalize(node.getText());
+            String description = normalize(node.getDescription());
+            int contentWidth = nodeW - 18;
+            int textY = y + topPadding;
+            for (String line : wrapText(title, g.getFontMetrics(), contentWidth, 2)) {
+                val fm = g.getFontMetrics();
+                g.drawString(line, x + (nodeW - fm.stringWidth(line)) / 2, textY + fm.getAscent());
+                textY += fm.getHeight();
+            }
+            if (!description.isBlank()) {
+                g.setFont(new Font("SansSerif", Font.PLAIN, Math.max(11, (int) Math.round(node.getFontSize() * 0.75))));
+                val dfm = g.getFontMetrics();
+                g.setColor(new Color(58, 58, 58));
+                for (String line : wrapText(description, dfm, contentWidth, hasImage(node) ? 2 : 3)) {
+                    if (textY + dfm.getHeight() > y + nodeH - 6) break;
+                    g.drawString(line, x + (nodeW - dfm.stringWidth(line)) / 2, textY + dfm.getAscent());
+                    textY += dfm.getHeight();
+                }
+            }
         }
         g.dispose();
         return image;
+    }
+
+    private BufferedImage readNodeImage(String imageUri) {
+        if (imageUri == null || imageUri.isBlank()) return null;
+        try {
+            if (imageUri.startsWith("data:image/")) {
+                int commaIndex = imageUri.indexOf(',');
+                if (commaIndex <= 0) return null;
+                byte[] bytes = Base64.getDecoder().decode(imageUri.substring(commaIndex + 1).getBytes(StandardCharsets.UTF_8));
+                return ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+            }
+            val connection = URI.create(imageUri).toURL().openConnection();
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("User-Agent", "simple-mindmaps-export/1.0");
+            try (InputStream in = connection.getInputStream()) {
+                return ImageIO.read(in);
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private List<String> wrapText(String text, FontMetrics metrics, int maxWidth, int maxLines) {
+        if (text == null || text.isBlank()) return List.of();
+        val words = text.trim().split("\\s+");
+        val lines = new java.util.ArrayList<String>();
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            if (metrics.stringWidth(candidate) <= maxWidth) {
+                current.setLength(0);
+                current.append(candidate);
+            } else {
+                if (!current.isEmpty()) lines.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+                if (lines.size() == maxLines - 1) break;
+            }
+        }
+        if (!current.isEmpty() && lines.size() < maxLines) lines.add(current.toString());
+        return lines;
     }
 
     private boolean hasImage(NodeDto node) {
