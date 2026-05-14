@@ -708,8 +708,8 @@ function openContextMenu(event, nodeId) {
 
     document.body.appendChild(content);
     let cleanupAutoUpdate = null;
-    if (window.FloatingUIDOM?.computePosition) {
-        const { computePosition, flip, shift, offset, autoUpdate } = window.FloatingUIDOM;
+    if (globalThis.FloatingUIDOM?.computePosition) {
+        const { computePosition, flip, shift, offset, autoUpdate } = globalThis.FloatingUIDOM;
         const virtualReference = {
             getBoundingClientRect() {
                 return {
@@ -1607,7 +1607,7 @@ if (canvasPanel) {
         if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
     });
 
-    window.addEventListener("wheel", event => {
+    globalThis.addEventListener("wheel", event => {
         const rect = canvasPanel.getBoundingClientRect();
         const isInsideCanvasByPointer = event.clientX >= rect.left && event.clientX <= rect.right
             && event.clientY >= rect.top && event.clientY <= rect.bottom;
