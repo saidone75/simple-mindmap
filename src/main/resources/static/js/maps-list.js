@@ -8,7 +8,7 @@
 
     function openDialog({ title, message, mode = "alert" }) {
         if (!appDialog || !appDialogTitle || !appDialogMessage || !appDialogConfirm || !appDialogCancel) {
-            return Promise.resolve(mode === "confirm" ? false : true);
+            return Promise.resolve(mode !== "confirm");
         }
         return new Promise((resolve) => {
             appDialogTitle.textContent = title ?? "";
