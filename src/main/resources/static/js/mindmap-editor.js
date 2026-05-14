@@ -99,7 +99,7 @@ const appDialogConfirm = document.getElementById("app-dialog-confirm");
 const mapTitle = document.getElementById("map-title");
 const renameMapBtn = document.getElementById("rename-map-btn");
 
-const showLoading = globalThis.window?.showLoading ?? function showLoading(msg) {
+let showLoading = globalThis.window?.showLoading ?? function showLoading(msg) {
     let el = document.getElementById('loading-overlay');
     if (!el) {
         el = document.createElement('div');
@@ -111,7 +111,7 @@ const showLoading = globalThis.window?.showLoading ?? function showLoading(msg) 
     el.style.display = 'flex';
 };
 
-const hideLoading = globalThis.window?.hideLoading ?? function hideLoading() {
+let hideLoading = globalThis.window?.hideLoading ?? function hideLoading() {
     const el = document.getElementById('loading-overlay');
     if (el) el.style.display = 'none';
 };
@@ -708,8 +708,8 @@ function openContextMenu(event, nodeId) {
 
     document.body.appendChild(content);
     let cleanupAutoUpdate = null;
-    if (window.FloatingUIDOM?.computePosition) {
-        const { computePosition, flip, shift, offset, autoUpdate } = window.FloatingUIDOM;
+    if (globalThis.FloatingUIDOM?.computePosition) {
+        const { computePosition, flip, shift, offset, autoUpdate } = globalThis.FloatingUIDOM;
         const virtualReference = {
             getBoundingClientRect() {
                 return {
@@ -1607,7 +1607,7 @@ if (canvasPanel) {
         if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
     });
 
-    window.addEventListener("wheel", event => {
+    globalThis.addEventListener("wheel", event => {
         const rect = canvasPanel.getBoundingClientRect();
         const isInsideCanvasByPointer = event.clientX >= rect.left && event.clientX <= rect.right
             && event.clientY >= rect.top && event.clientY <= rect.bottom;
