@@ -17,28 +17,40 @@
  */
 
 :root {
+    --color-white: #ffffff;
+    --color-slate-900: #0f172a;
+    --color-blue-700: #1d4ed8;
+    --color-blue-800: #1e40af;
+    --color-blue-600: #2563eb;
+    --color-bg-main: #f5f7fb;
+    --color-bg-muted: #f8fafc;
+    --color-bg-soft: #fbfdff;
+    --color-text-main: #213547;
+    --color-text-muted: #64748b;
+    --color-border-main: #d9e1ea;
+
     --bg: #f5f7fb;
-    --card: #ffffff;
-    --ink: #213547;
-    --muted: #64748b;
-    --border: #d9e1ea;
+    --card: var(--color-white);
+    --ink: var(--color-text-main);
+    --muted: var(--color-text-muted);
+    --border: var(--color-border-main);
     --accent: #3b82f6;
-    --accent-dark: #2563eb;
+    --accent-dark: var(--color-blue-600);
     --danger: #c0392b;
     --ok: #2e7d32;
     --loading-overlay-bg: rgba(245, 247, 251, 0.9);
     --loading-overlay-text: #1f6f43;
-    --white: #ffffff;
+    --white: var(--color-white);
     --text-strong: #1f2937;
     --text-secondary-strong: #334155;
     --text-label: #374151;
-    --text-contrast: #fff;
+    --text-contrast: var(--color-white);
     --surface-soft: #edf3ff;
     --surface-soft-hover: #dfeaff;
-    --surface-card-tint: #fbfdff;
-    --surface-input: #fff;
+    --surface-card-tint: var(--color-bg-soft);
+    --surface-input: var(--color-white);
     --surface-success: #ecfdf3;
-    --surface-muted: #f8fafc;
+    --surface-muted: var(--color-bg-muted);
     --surface-info-soft: #f8fbff;
     --surface-info-hover: #e8f1ff;
     --surface-danger-soft: #fff5f5;
@@ -50,8 +62,8 @@
     --border-danger-soft: #f0c1c1;
     --border-action: #bfdbfe;
     --border-action-hover: #60a5fa;
-    --accent-mid: #1d4ed8;
-    --accent-deep: #1e40af;
+    --accent-mid: var(--color-blue-700);
+    --accent-deep: var(--color-blue-800);
     --accent-deeper: #0f3ea8;
     --connector: #7c8a9a;
     --node-stroke: #475569;
