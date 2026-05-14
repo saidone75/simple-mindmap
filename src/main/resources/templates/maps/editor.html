@@ -27,17 +27,16 @@
 <body>
 <div class="editor-page">
     <header class="editor-topbar">
-        <div>
-            <a class="back-link" th:href="@{/maps}">← Torna alle mappe</a>
+        <a class="back-link" th:href="@{/maps}">← Torna alle mappe</a>
+        <div class="editor-title-actions-row">
             <div class="map-title-row">
                 <h1 id="map-title" th:text="${map.title}">Titolo mappa</h1>
                 <button type="button" id="rename-map-btn" class="icon-btn" title="Rinomina mappa" aria-label="Rinomina mappa">✏️</button>
             </div>
-        </div>
-        <div class="topbar-actions">
-            <button type="button" id="add-root-btn">Aggiungi nodo</button>
+            <div class="topbar-actions">
             <button type="button" id="export-png-btn">Esporta PNG</button>
             <a class="secondary-btn" th:href="@{/api/maps/{id}/export(id=${map.id})}">Esporta HTML</a>
+            </div>
         </div>
     </header>
 

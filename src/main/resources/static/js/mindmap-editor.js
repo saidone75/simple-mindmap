@@ -1548,35 +1548,6 @@ function updateImageSizeLabels() {
     if (imageHeightValue && imageHeightInput) imageHeightValue.textContent = imageHeightInput.value;
 }
 
-document.getElementById("add-root-btn").addEventListener("click", async () => {
-    const preset = getCurrentStylePreset();
-    pushUndoSnapshot();
-    const node = await createNode({
-        parentId: null,
-        text: "Nuovo nodo",
-        description: "Breve descrizione del nodo.",
-        emoji: null,
-        branchText: null,
-        x: 180 + Math.round(Math.random() * 700),
-        y: 120 + Math.round(Math.random() * 500),
-        color: preset.rootColor,
-        fontSize: 18,
-        shape: preset.shape,
-        branchColor: preset.branchColor,
-        branchStyle: preset.branchStyle,
-        branchWidth: preset.branchWidth,
-        branchCurve: preset.branchCurve,
-        imageUri: null,
-        imageWidth: DEFAULT_IMAGE_SIZE,
-        imageHeight: DEFAULT_IMAGE_SIZE,
-        nodeWidth: BASE_NODE_WIDTH,
-        nodeHeight: BASE_NODE_HEIGHT
-    });
-    state.map.nodes.push(node);
-    selectNode(node.id, { showNodeOverlay: false });
-    render();
-});
-
 document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
 if (zoomInput) {
     zoomInput.addEventListener("input", () => applyCanvasViewport());
