@@ -14,7 +14,6 @@ Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno s
 Simple MindMap è un'applicazione Java/Spring Boot con interfaccia Thymeleaf che permette di:
 
 - creare una nuova mappa,
-- partire da un nodo centrale,
 - aggiungere rami e sotto-rami,
 - personalizzare testo e stile,
 - esportare il risultato.
@@ -26,16 +25,13 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 ## 🌟 Caratteristiche principali
 
 - ✅ Creazione mappa rapida
-- ✅ Nodo principale automatico
 - ✅ Template pronti (Italiano, Scienze, Storia, Geografia)
-- ✅ Generazione mappe anche con AI
-- ✅ Aggiunta nodi principali e nodi figli
+- ✅ Generazione mappe con AI
 - ✅ Drag & drop dei nodi
 - ✅ Modifica testo, colore e dimensione font
-- ✅ Doppio click per editing veloce
 - ✅ Autosave dei nodi
-- ✅ Export PNG direttamente dal browser
-- ✅ Export HTML stampabile dal backend
+- ✅ Export PNG
+- ✅ Export PDF stampabile
 - ✅ Eliminazione mappe e nodi
 
 ---
