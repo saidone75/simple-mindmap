@@ -1034,8 +1034,8 @@ function truncate(text, max) {
 
 function normalizeNodeText(value) {
     const normalized = sanitizePlainText((value || "")
-        .replace(/\r\n/g, "\n")
-        .replace(/\u00a0/g, " ")
+        .replaceAll(/\r\n/, "\n")
+        .replaceAll(/\u00a0/, " ")
         .trim());
     return normalized.length ? normalized : "Nodo";
 }
