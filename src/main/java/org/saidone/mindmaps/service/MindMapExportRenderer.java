@@ -109,6 +109,36 @@ public class MindMapExportRenderer {
         return image;
     }
 
+
+
+    public byte[] renderMapPdf(MindMapDto map, String format) throws Exception {
+        val image = renderMapImage(map);
+        val pageRect = "a3".equalsIgnoreCase(format) ? org.apache.pdfbox.pdmodel.common.PDRectangle.A3 : org.apache.pdfbox.pdmodel.common.PDRectangle.A4;
+        try (val document = new org.apache.pdfbox.pdmodel.PDDocument(); val imageBytes = new java.io.ByteArrayOutputStream()) {
+            ImageIO.write(image, "jpg", imageBytes);
+            val page = new org.apache.pdfbox.pdmodel.PDPage(new org.apache.pdfbox.pdmodel.common.PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
+            document.addPage(page);
+            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(document, imageBytes.toByteArray());
+            try (val stream = new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
+                float margin = 24f;
+                float usableW = page.getMediaBox().getWidth() - margin * 2;
+                float usableH = page.getMediaBox().getHeight() - margin * 2;
+                float scale = Math.min(usableW / image.getWidth(), usableH / image.getHeight());
+                float drawW = image.getWidth() * scale;
+                float drawH = image.getHeight() * scale;
+                float x = (page.getMediaBox().getWidth() - drawW) / 2;
+                float y = (page.getMediaBox().getHeight() - drawH) / 2;
+                stream.drawImage(pdImage, x, y, drawW, drawH);
+            }
+            val out = new java.io.ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+    public String normalizePdfFormat(String format) {
+        return "a3".equalsIgnoreCase(format) ? "a3" : "a4";
+    }
     public String slugify(String value) {
         if (value == null || value.isBlank()) return "mappa";
         return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");

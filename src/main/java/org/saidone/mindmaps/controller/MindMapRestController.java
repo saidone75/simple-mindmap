@@ -23,11 +23,6 @@ import lombok.val;
 import org.saidone.mindmaps.dto.*;
 import org.saidone.mindmaps.service.MindMapExportRenderer;
 import org.saidone.mindmaps.service.MindMapService;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -88,32 +83,10 @@ public class MindMapRestController {
     @GetMapping(value = "/maps/{id}/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id, @RequestParam(defaultValue = "a4") String format) throws Exception {
         val map = mindMapService.findMapWithNodes(id);
-        val image = mindMapExportRenderer.renderMapImage(map);
-        val pageRect = "a3".equalsIgnoreCase(format) ? PDRectangle.A3 : PDRectangle.A4;
-
-        byte[] pdfBytes;
-        try (val document = new PDDocument(); val imageBytes = new ByteArrayOutputStream()) {
-            ImageIO.write(image, "jpg", imageBytes);
-            val page = new PDPage(new PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
-            document.addPage(page);
-            val pdImage = JPEGFactory.createFromByteArray(document, imageBytes.toByteArray());
-            try (val stream = new PDPageContentStream(document, page)) {
-                float margin = 24f;
-                float usableW = page.getMediaBox().getWidth() - margin * 2;
-                float usableH = page.getMediaBox().getHeight() - margin * 2;
-                float scale = Math.min(usableW / image.getWidth(), usableH / image.getHeight());
-                float drawW = image.getWidth() * scale;
-                float drawH = image.getHeight() * scale;
-                float x = (page.getMediaBox().getWidth() - drawW) / 2;
-                float y = (page.getMediaBox().getHeight() - drawH) / 2;
-                stream.drawImage(pdImage, x, y, drawW, drawH);
-            }
-            val out = new ByteArrayOutputStream();
-            document.save(out);
-            pdfBytes = out.toByteArray();
-        }
+        val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
+        val pdfBytes = mindMapExportRenderer.renderMapPdf(map, normalizedFormat);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(mindMapExportRenderer.slugify(map.getTitle()), pageRect == PDRectangle.A3 ? "a3" : "a4"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(mindMapExportRenderer.slugify(map.getTitle()), normalizedFormat))
                 .body(pdfBytes);
     }
 
