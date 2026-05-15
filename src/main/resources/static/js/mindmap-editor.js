@@ -1592,7 +1592,7 @@ async function exportCanvas(format) {
     const normalizedFormat = (format || "png").toLowerCase();
     const isPdf = normalizedFormat === "pdf";
     const pdfFormat = (exportPdfFormatSelect?.value || "a4").toLowerCase() === "a3" ? "a3" : "a4";
-    const svgMarkup = buildExportSvg();
+    const svgMarkup = await buildExportSvg();
     const url = isPdf
         ? `/api/maps/${state.map.id}/export/pdf?format=${pdfFormat}`
         : `/api/maps/${state.map.id}/export/png`;
@@ -1615,7 +1615,53 @@ async function exportCanvas(format) {
     URL.revokeObjectURL(blobUrl);
 }
 
-function buildExportSvg() {
+
+function toWikimediaVideoPosterUrl(href) {
+    if (!href) return href;
+    const value = href.trim();
+    const match = value.match(/^https?:\/\/(upload\.wikimedia\.org)\/(wikipedia\/commons)\/([0-9a-f]\/[^?#]+\.(?:webm|ogv))(?:[?#].*)?$/i);
+    if (!match) return value;
+    const [, host, basePath, filePath] = match;
+    const fileName = filePath.substring(filePath.lastIndexOf('/') + 1);
+    return `https://${host}/${basePath}/thumb/${filePath}/${fileName}.jpg`;
+}
+
+
+function convertWebpDataUriToPng(dataUri) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            try {
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, img.naturalWidth || img.width || 1);
+                canvas.height = Math.max(1, img.naturalHeight || img.height || 1);
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    resolve(dataUri);
+                    return;
+                }
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL("image/png"));
+            } catch (_error) {
+                resolve(dataUri);
+            }
+        };
+        img.onerror = () => resolve(dataUri);
+        img.src = dataUri;
+    });
+}
+
+async function normalizeExportImageHref(href) {
+    if (!href) return "";
+    const trimmed = href.trim();
+    if (!trimmed) return "";
+    if (trimmed.toLowerCase().startsWith("data:image/webp")) {
+        return await convertWebpDataUriToPng(trimmed);
+    }
+    return toWikimediaVideoPosterUrl(trimmed);
+}
+
+async function buildExportSvg() {
     const clone = svg.cloneNode(true);
     const viewBox = (svg.getAttribute("viewBox") || "0 0 1400 900").split(/\s+/).map(Number);
     const width = Number.isFinite(viewBox[2]) ? viewBox[2] : 1400;
@@ -1624,17 +1670,18 @@ function buildExportSvg() {
     clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
     clone.setAttribute("width", String(width));
     clone.setAttribute("height", String(height));
-    clone.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    clone.setAttribute("viewBox", svg.getAttribute("viewBox") || `0 0 ${width} ${height}`);
 
-    clone.querySelectorAll("image").forEach(image => {
-        const href = image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href");
-        if (!href || !href.trim()) {
+    const exportImages = Array.from(clone.querySelectorAll("image"));
+    for (const image of exportImages) {
+        const href = await normalizeExportImageHref(image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        if (!href) {
             image.remove();
-            return;
+            continue;
         }
         image.setAttribute("href", href);
         image.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", href);
-    });
+    }
 
     return new XMLSerializer().serializeToString(clone);
 }
