@@ -22,11 +22,28 @@ import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
 import org.saidone.mindmaps.service.MindMapService;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -67,66 +84,196 @@ public class MindMapRestController {
         mindMapService.deleteNode(nodeId);
     }
 
-    @GetMapping(value = "/maps/{id}/export", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<String> exportHtml(@PathVariable Long id) {
+    @GetMapping(value = "/maps/{id}/export/png", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> exportPng(@PathVariable Long id) throws Exception {
         val map = mindMapService.findMapWithNodes(id);
-        val nodesById = map.getNodes().stream().collect(Collectors.toMap(NodeDto::getId, Function.identity()));
-        val connections = map.getNodes().stream()
-                .filter(node -> node.getParentId() != null)
-                .map(node -> {
-                    val parent = nodesById.get(node.getParentId());
-                    return parent == null ? "" : buildConnectionLine(parent, node);
-                })
-                .collect(Collectors.joining());
-
-        val nodes = map.getNodes().stream().map(this::buildNodeMarkup).collect(Collectors.joining());
-
-        val html = """
-                <!DOCTYPE html><html lang='it'><head><meta charset='UTF-8'><title>%s</title>
-                <style>body{font-family:Arial,sans-serif;background:#fff;margin:0;padding:20px;}svg{width:1400px;height:900px;} .line{stroke:#777;stroke-width:2}.node text{font-weight:600;dominant-baseline:middle;text-anchor:middle;}</style>
-                </head><body><h1>%s</h1><svg viewBox='0 0 1400 900' xmlns='http://www.w3.org/2000/svg'>%s%s</svg></body></html>
-                """.formatted(escape(map.getTitle()), escape(map.getTitle()), connections, nodes);
-
+        val image = renderMapImage(map);
+        val output = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", output);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, String.format("attachment; filename=mappa-%d.html", id))
-                .body(html);
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(slugify(map.getTitle())))
+                .body(output.toByteArray());
     }
 
-    private String buildConnectionLine(NodeDto parent, NodeDto node) {
-        int parentW = hasImage(parent) ? 220 : 180;
-        int parentH = hasImage(parent) ? 100 : 64;
-        int nodeW = hasImage(node) ? 220 : 180;
-        int nodeH = hasImage(node) ? 100 : 64;
+    @GetMapping(value = "/maps/{id}/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportPdf(@PathVariable Long id, @RequestParam(defaultValue = "a4") String format) throws Exception {
+        val map = mindMapService.findMapWithNodes(id);
+        val image = renderMapImage(map);
+        val pageRect = "a3".equalsIgnoreCase(format) ? PDRectangle.A3 : PDRectangle.A4;
 
-        return "<line class='line' x1='%d' y1='%d' x2='%d' y2='%d' />"
-                .formatted(parent.getX() + parentW / 2, parent.getY() + parentH / 2, node.getX() + nodeW / 2, node.getY() + nodeH / 2);
+        byte[] pdfBytes;
+        try (val document = new PDDocument(); val imageBytes = new ByteArrayOutputStream()) {
+            ImageIO.write(image, "jpg", imageBytes);
+            val page = new PDPage(new PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
+            document.addPage(page);
+            val pdImage = JPEGFactory.createFromByteArray(document, imageBytes.toByteArray());
+            try (val stream = new PDPageContentStream(document, page)) {
+                float margin = 24f;
+                float usableW = page.getMediaBox().getWidth() - margin * 2;
+                float usableH = page.getMediaBox().getHeight() - margin * 2;
+                float scale = Math.min(usableW / image.getWidth(), usableH / image.getHeight());
+                float drawW = image.getWidth() * scale;
+                float drawH = image.getHeight() * scale;
+                float x = (page.getMediaBox().getWidth() - drawW) / 2;
+                float y = (page.getMediaBox().getHeight() - drawH) / 2;
+                stream.drawImage(pdImage, x, y, drawW, drawH);
+            }
+            val out = new ByteArrayOutputStream();
+            document.save(out);
+            pdfBytes = out.toByteArray();
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(slugify(map.getTitle()), pageRect == PDRectangle.A3 ? "a3" : "a4"))
+                .body(pdfBytes);
     }
 
-    private String buildNodeMarkup(NodeDto node) {
-        int width = hasImage(node) ? 220 : 180;
-        int height = hasImage(node) ? 100 : 64;
+    private BufferedImage renderMapImage(MindMapDto map) throws Exception {
+        int padding = 80;
+        int minX = map.getNodes().stream().map(NodeDto::getX).min(Comparator.naturalOrder()).orElse(0);
+        int minY = map.getNodes().stream().map(NodeDto::getY).min(Comparator.naturalOrder()).orElse(0);
+        int maxX = map.getNodes().stream().mapToInt(n -> n.getX() + (hasImage(n) ? 220 : 180)).max().orElse(1400);
+        int maxY = map.getNodes().stream().mapToInt(n -> n.getY() + (hasImage(n) ? 100 : 64)).max().orElse(900);
+        int width = Math.max(1400, (maxX - minX) + padding * 2);
+        int height = Math.max(900, (maxY - minY) + padding * 2);
 
-        val imageMarkup = hasImage(node)
-                ? "<image href='%s' x='%d' y='%d' width='42' height='42' preserveAspectRatio='xMidYMid slice'/>"
-                .formatted(escape(node.getImageUri()), node.getX() + (width - 42) / 2, node.getY() + 12)
-                : "";
+        val image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        val g = image.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, width, height);
+        int offsetX = padding - minX;
+        int offsetY = padding - minY;
+        val nodesById = map.getNodes().stream().collect(Collectors.toMap(NodeDto::getId, Function.identity()));
 
-        return """
-                <g class='node'><rect x='%d' y='%d' rx='18' ry='18' width='%d' height='%d' fill='%s' stroke='#555' stroke-width='1.2'/>%s
-                <text x='%d' y='%d' font-size='%d'>%s</text></g>
-                """.formatted(
-                node.getX(), node.getY(), width, height, escape(node.getColor()), imageMarkup,
-                node.getX() + width / 2, hasImage(node) ? node.getY() + height - 18 : node.getY() + 34,
-                node.getFontSize(), escape(node.getText())
-        );
+        g.setStroke(new BasicStroke(2f));
+        g.setColor(new Color(124, 138, 154));
+        for (val node : map.getNodes()) {
+            if (node.getParentId() == null) continue;
+            val parent = nodesById.get(node.getParentId());
+            if (parent == null) continue;
+            int parentW = hasImage(parent) ? 220 : 180;
+            int parentH = hasImage(parent) ? 100 : 64;
+            int nodeW = hasImage(node) ? 220 : 180;
+            int nodeH = hasImage(node) ? 100 : 64;
+            g.drawLine(parent.getX() + offsetX + parentW / 2, parent.getY() + offsetY + parentH / 2,
+                    node.getX() + offsetX + nodeW / 2, node.getY() + offsetY + nodeH / 2);
+        }
+
+        for (val node : map.getNodes()) {
+            int nodeW = hasImage(node) ? 220 : 180;
+            int nodeH = hasImage(node) ? 100 : 64;
+            int x = node.getX() + offsetX;
+            int y = node.getY() + offsetY;
+            g.setColor(parseColor(node.getColor()));
+            g.fill(new RoundRectangle2D.Float(x, y, nodeW, nodeH, 18, 18));
+            g.setColor(new Color(85, 85, 85));
+            g.setStroke(new BasicStroke(1.2f));
+            g.draw(new RoundRectangle2D.Float(x, y, nodeW, nodeH, 18, 18));
+            if (hasImage(node)) {
+                try {
+                    val nodeImage = readNodeImage(node.getImageUri());
+                    if (nodeImage != null) g.drawImage(nodeImage, x + (nodeW - 42) / 2, y + 12, 42, 42, null);
+                } catch (Exception ignored) { }
+            }
+
+            String emoji = normalize(node.getEmoji());
+            int topPadding = 14;
+            if (!emoji.isBlank() && !hasImage(node)) {
+                g.setFont(new Font("Dialog", Font.PLAIN, Math.max(16, node.getFontSize() + 2)));
+                val em = g.getFontMetrics();
+                g.setColor(Color.BLACK);
+                g.drawString(emoji, x + (nodeW - em.stringWidth(emoji)) / 2, y + topPadding + em.getAscent());
+                topPadding += em.getHeight() + 2;
+            } else if (hasImage(node)) {
+                topPadding = 58;
+            }
+
+            g.setFont(new Font("SansSerif", Font.BOLD, node.getFontSize()));
+            g.setColor(Color.BLACK);
+            String title = normalize(node.getText());
+            String description = normalize(node.getDescription());
+            int contentWidth = nodeW - 18;
+            int textY = y + topPadding;
+            for (String line : wrapText(title, g.getFontMetrics(), contentWidth, 2)) {
+                val fm = g.getFontMetrics();
+                g.drawString(line, x + (nodeW - fm.stringWidth(line)) / 2, textY + fm.getAscent());
+                textY += fm.getHeight();
+            }
+            if (!description.isBlank()) {
+                g.setFont(new Font("SansSerif", Font.PLAIN, Math.max(11, (int) Math.round(node.getFontSize() * 0.75))));
+                val dfm = g.getFontMetrics();
+                g.setColor(new Color(58, 58, 58));
+                for (String line : wrapText(description, dfm, contentWidth, hasImage(node) ? 2 : 3)) {
+                    if (textY + dfm.getHeight() > y + nodeH - 6) break;
+                    g.drawString(line, x + (nodeW - dfm.stringWidth(line)) / 2, textY + dfm.getAscent());
+                    textY += dfm.getHeight();
+                }
+            }
+        }
+        g.dispose();
+        return image;
+    }
+
+    private BufferedImage readNodeImage(String imageUri) {
+        if (imageUri == null || imageUri.isBlank()) return null;
+        try {
+            if (imageUri.startsWith("data:image/")) {
+                int commaIndex = imageUri.indexOf(',');
+                if (commaIndex <= 0) return null;
+                byte[] bytes = Base64.getDecoder().decode(imageUri.substring(commaIndex + 1).getBytes(StandardCharsets.UTF_8));
+                return ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+            }
+            val connection = URI.create(imageUri).toURL().openConnection();
+            connection.setConnectTimeout(4000);
+            connection.setReadTimeout(5000);
+            connection.setRequestProperty("User-Agent", "simple-mindmaps-export/1.0");
+            try (InputStream in = connection.getInputStream()) {
+                return ImageIO.read(in);
+            }
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    private List<String> wrapText(String text, FontMetrics metrics, int maxWidth, int maxLines) {
+        if (text == null || text.isBlank()) return List.of();
+        val words = text.trim().split("\\s+");
+        val lines = new java.util.ArrayList<String>();
+        StringBuilder current = new StringBuilder();
+        for (String word : words) {
+            String candidate = current.isEmpty() ? word : current + " " + word;
+            if (metrics.stringWidth(candidate) <= maxWidth) {
+                current.setLength(0);
+                current.append(candidate);
+            } else {
+                if (!current.isEmpty()) lines.add(current.toString());
+                current.setLength(0);
+                current.append(word);
+                if (lines.size() == maxLines - 1) break;
+            }
+        }
+        if (!current.isEmpty() && lines.size() < maxLines) lines.add(current.toString());
+        return lines;
     }
 
     private boolean hasImage(NodeDto node) {
         return node.getImageUri() != null && !node.getImageUri().isBlank();
     }
 
-    private String escape(String value) {
-        if (value == null) return "";
-        return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
+    private Color parseColor(String hex) {
+        try {
+            return Color.decode(hex);
+        } catch (Exception ignored) {
+            return new Color(255, 217, 102);
+        }
+    }
+
+    private String slugify(String value) {
+        if (value == null || value.isBlank()) return "mappa";
+        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
     }
 }

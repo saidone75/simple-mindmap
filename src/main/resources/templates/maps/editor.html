@@ -34,8 +34,12 @@
                 <button type="button" id="rename-map-btn" class="icon-btn" title="Rinomina mappa" aria-label="Rinomina mappa">✏️</button>
             </div>
             <div class="topbar-actions">
-            <button type="button" id="export-png-btn">Esporta PNG</button>
-            <a class="secondary-btn" th:href="@{/api/maps/{id}/export(id=${map.id})}">Esporta HTML</a>
+            <a id="export-png-btn" class="secondary-btn" th:href="@{/api/maps/{id}/export/png(id=${map.id})}">Esporta PNG</a>
+                <button type="button" id="export-pdf-btn" class="secondary-btn">Esporta PDF</button>
+                <select id="export-pdf-format" class="secondary-btn small-btn" aria-label="Formato PDF">
+                    <option value="a4" selected>A4</option>
+                    <option value="a3">A3</option>
+                </select>
             </div>
         </div>
     </header>

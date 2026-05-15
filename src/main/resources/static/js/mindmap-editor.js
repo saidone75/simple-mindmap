@@ -1034,8 +1034,8 @@ function truncate(text, max) {
 
 function normalizeNodeText(value) {
     const normalized = sanitizePlainText((value || "")
-        .replace(/\r\n/g, "\n")
-        .replace(/\u00a0/g, " ")
+        .replaceAll(/\r\n/, "\n")
+        .replaceAll(/\u00a0/, " ")
         .trim());
     return normalized.length ? normalized : "Nodo";
 }
@@ -1548,7 +1548,14 @@ function updateImageSizeLabels() {
     if (imageHeightValue && imageHeightInput) imageHeightValue.textContent = imageHeightInput.value;
 }
 
-document.getElementById("export-png-btn").addEventListener("click", () => exportPng());
+const exportPdfButton = document.getElementById("export-pdf-btn");
+const exportPdfFormatSelect = document.getElementById("export-pdf-format");
+if (exportPdfButton) {
+    exportPdfButton.addEventListener("click", () => {
+        const format = (exportPdfFormatSelect?.value || "a4").toLowerCase() === "a3" ? "a3" : "a4";
+        globalThis.location.href = `/api/maps/${state.map.id}/export/pdf?format=${format}`;
+    });
+}
 if (zoomInput) {
     zoomInput.addEventListener("input", () => applyCanvasViewport());
 }
@@ -1982,30 +1989,6 @@ async function quickEditEmoji(nodeId) {
     selectNode(nodeId);
     render();
     await saveNode(node);
-}
-
-function exportPng() {
-    const clone = svg.cloneNode(true);
-    clone.setAttribute("xmlns", SVG_NS);
-    const data = new XMLSerializer().serializeToString(clone);
-    const svgBlob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(svgBlob);
-    const img = new Image();
-    img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 1400;
-        canvas.height = 900;
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url);
-        const link = document.createElement("a");
-        link.download = `${slugify(state.map.title || "mappa")}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-    };
-    img.src = url;
 }
 
 function slugify(value) {
