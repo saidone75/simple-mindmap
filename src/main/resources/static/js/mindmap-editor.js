@@ -917,6 +917,7 @@ function renderNodeImage(group, node, width) {
     image.setAttribute("width", imageWidth);
     image.setAttribute("height", imageHeight);
     image.setAttribute("href", node.imageUri);
+    image.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", node.imageUri);
     image.setAttribute("preserveAspectRatio", "xMidYMid slice");
     image.setAttribute("clip-path", `url(#${clipId})`);
     image.style.pointerEvents = "all";
@@ -1583,12 +1584,70 @@ function updateImageSizeLabels() {
     if (imageHeightValue && imageHeightInput) imageHeightValue.textContent = imageHeightInput.value;
 }
 
+const exportPngButton = document.getElementById("export-png-btn");
 const exportPdfButton = document.getElementById("export-pdf-btn");
 const exportPdfFormatSelect = document.getElementById("export-pdf-format");
+
+async function exportCanvas(format) {
+    const normalizedFormat = (format || "png").toLowerCase();
+    const isPdf = normalizedFormat === "pdf";
+    const pdfFormat = (exportPdfFormatSelect?.value || "a4").toLowerCase() === "a3" ? "a3" : "a4";
+    const svgMarkup = buildExportSvg();
+    const url = isPdf
+        ? `/api/maps/${state.map.id}/export/pdf?format=${pdfFormat}`
+        : `/api/maps/${state.map.id}/export/png`;
+    const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ svg: svgMarkup })
+    });
+    if (!response.ok) {
+        throw new Error(`Export fallito (${response.status})`);
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = isPdf ? `mindmap-${pdfFormat}.pdf` : "mindmap.png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(blobUrl);
+}
+
+function buildExportSvg() {
+    const clone = svg.cloneNode(true);
+    const viewBox = (svg.getAttribute("viewBox") || "0 0 1400 900").split(/\s+/).map(Number);
+    const width = Number.isFinite(viewBox[2]) ? viewBox[2] : 1400;
+    const height = Number.isFinite(viewBox[3]) ? viewBox[3] : 900;
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+    clone.setAttribute("width", String(width));
+    clone.setAttribute("height", String(height));
+    clone.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+    clone.querySelectorAll("image").forEach(image => {
+        const href = image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+        if (!href || !href.trim()) {
+            image.remove();
+            return;
+        }
+        image.setAttribute("href", href);
+        image.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", href);
+    });
+
+    return new XMLSerializer().serializeToString(clone);
+}
+
+if (exportPngButton) {
+    exportPngButton.addEventListener("click", async event => {
+        event.preventDefault();
+        await exportCanvas("png");
+    });
+}
 if (exportPdfButton) {
-    exportPdfButton.addEventListener("click", () => {
-        const format = (exportPdfFormatSelect?.value || "a4").toLowerCase() === "a3" ? "a3" : "a4";
-        globalThis.location.href = `/api/maps/${state.map.id}/export/pdf?format=${format}`;
+    exportPdfButton.addEventListener("click", async () => {
+        await exportCanvas("pdf");
     });
 }
 if (zoomInput) {

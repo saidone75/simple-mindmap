@@ -9,7 +9,10 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
@@ -17,6 +20,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 @Component
 public class MindMapExportRenderer {
@@ -33,6 +39,7 @@ public class MindMapExportRenderer {
         val image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         val g = image.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
         int offsetX = padding - minX;
@@ -72,19 +79,20 @@ public class MindMapExportRenderer {
             }
 
             String emoji = normalize(node.getEmoji());
+            int fontSize = resolveFontSize(node);
             int topPadding = 14;
             if (!emoji.isBlank() && !hasImage(node)) {
-                g.setFont(new Font("Dialog", Font.PLAIN, Math.max(16, node.getFontSize() + 2)));
+                g.setFont(new Font("Dialog", Font.PLAIN, Math.max(16, fontSize + 2)));
                 val em = g.getFontMetrics();
-                g.setColor(Color.BLACK);
+                g.setColor(resolveTextColor(node.getColor()));
                 g.drawString(emoji, x + (nodeW - em.stringWidth(emoji)) / 2, y + topPadding + em.getAscent());
                 topPadding += em.getHeight() + 2;
             } else if (hasImage(node)) {
                 topPadding = 58;
             }
 
-            g.setFont(new Font("SansSerif", Font.BOLD, node.getFontSize()));
-            g.setColor(Color.BLACK);
+            g.setFont(new Font("Dialog", Font.BOLD, fontSize));
+            g.setColor(resolveTextColor(node.getColor()));
             String title = normalize(node.getText());
             String description = normalize(node.getDescription());
             int contentWidth = nodeW - 18;
@@ -95,9 +103,9 @@ public class MindMapExportRenderer {
                 textY += fm.getHeight();
             }
             if (!description.isBlank()) {
-                g.setFont(new Font("SansSerif", Font.PLAIN, Math.max(11, (int) Math.round(node.getFontSize() * 0.75))));
+                g.setFont(new Font("Dialog", Font.PLAIN, Math.max(11, (int) Math.round(fontSize * 0.75))));
                 val dfm = g.getFontMetrics();
-                g.setColor(new Color(58, 58, 58));
+                g.setColor(resolveSecondaryTextColor(node.getColor()));
                 for (String line : wrapText(description, dfm, contentWidth, hasImage(node) ? 2 : 3)) {
                     if (textY + dfm.getHeight() > y + nodeH - 6) break;
                     g.drawString(line, x + (nodeW - dfm.stringWidth(line)) / 2, textY + dfm.getAscent());
@@ -136,6 +144,93 @@ public class MindMapExportRenderer {
         }
     }
 
+
+    public byte[] renderSvgPng(String svg) throws Exception {
+        if (svg == null || svg.isBlank()) throw new IllegalArgumentException("SVG vuoto");
+        String sanitizedSvg = sanitizeSvgForBatik(svg);
+        val transcoder = new org.apache.batik.transcoder.image.PNGTranscoder();
+        val input = new org.apache.batik.transcoder.TranscoderInput(new ByteArrayInputStream(sanitizedSvg.getBytes(StandardCharsets.UTF_8)));
+        val output = new ByteArrayOutputStream();
+        val out = new org.apache.batik.transcoder.TranscoderOutput(output);
+        transcoder.transcode(input, out);
+        return output.toByteArray();
+    }
+
+    public byte[] renderSvgPdf(String svg, String format) throws Exception {
+        byte[] pngBytes = renderSvgPng(svg);
+        val image = ImageIO.read(new ByteArrayInputStream(pngBytes));
+        val pageRect = "a3".equalsIgnoreCase(format) ? org.apache.pdfbox.pdmodel.common.PDRectangle.A3 : org.apache.pdfbox.pdmodel.common.PDRectangle.A4;
+        try (val document = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            val page = new org.apache.pdfbox.pdmodel.PDPage(new org.apache.pdfbox.pdmodel.common.PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
+            document.addPage(page);
+            val jpegOut = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", jpegOut);
+            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(document, jpegOut.toByteArray());
+            try (val stream = new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
+                float margin = 24f;
+                float usableW = page.getMediaBox().getWidth() - margin * 2;
+                float usableH = page.getMediaBox().getHeight() - margin * 2;
+                float scale = Math.min(usableW / image.getWidth(), usableH / image.getHeight());
+                float drawW = image.getWidth() * scale;
+                float drawH = image.getHeight() * scale;
+                float x = (page.getMediaBox().getWidth() - drawW) / 2;
+                float y = (page.getMediaBox().getHeight() - drawH) / 2;
+                stream.drawImage(pdImage, x, y, drawW, drawH);
+            }
+            val out = new ByteArrayOutputStream();
+            document.save(out);
+            return out.toByteArray();
+        }
+    }
+
+
+    private String sanitizeSvgForBatik(String svg) {
+        try {
+            val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            val builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new org.xml.sax.InputSource(new java.io.StringReader(svg)));
+            NodeList images = document.getElementsByTagName("image");
+            for (int i = images.getLength() - 1; i >= 0; i--) {
+                Element image = (Element) images.item(i);
+                String href = normalizeImageHref(image);
+                if (href.isBlank() || !isSupportedImageHrefForBatik(href)) {
+                    image.getParentNode().removeChild(image);
+                    continue;
+                }
+                image.setAttribute("href", href);
+                image.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", href);
+            }
+            val transformer = javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+            transformer.setOutputProperty(javax.xml.transform.OutputKeys.OMIT_XML_DECLARATION, "yes");
+            val writer = new java.io.StringWriter();
+            transformer.transform(new javax.xml.transform.dom.DOMSource(document), new javax.xml.transform.stream.StreamResult(writer));
+            return writer.toString();
+        } catch (Exception ignored) {
+            return svg;
+        }
+    }
+
+    private String normalizeImageHref(Element image) {
+        String href = normalize(image.getAttribute("href"));
+        if (href.isBlank()) href = normalize(image.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
+        return href;
+    }
+
+    private boolean isSupportedImageHrefForBatik(String href) {
+        String value = href.trim().toLowerCase();
+        if (value.startsWith("data:image/")) {
+            int separator = value.indexOf(';');
+            String mediaType = separator > 0 ? value.substring(5, separator) : value.substring(5);
+            return mediaType.startsWith("image/png")
+                    || mediaType.startsWith("image/jpeg")
+                    || mediaType.startsWith("image/jpg")
+                    || mediaType.startsWith("image/gif")
+                    || mediaType.startsWith("image/svg+xml");
+        }
+        return value.startsWith("http://") || value.startsWith("https://") || value.startsWith("file:/");
+    }
+
     public String normalizePdfFormat(String format) {
         return "a3".equalsIgnoreCase(format) ? "a3" : "a4";
     }
@@ -151,15 +246,52 @@ public class MindMapExportRenderer {
                 int commaIndex = imageUri.indexOf(',');
                 if (commaIndex <= 0) return null;
                 byte[] bytes = Base64.getDecoder().decode(imageUri.substring(commaIndex + 1).getBytes(StandardCharsets.UTF_8));
-                return ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+                return decodeImageBytes(bytes, imageUri.substring(0, commaIndex));
             }
-            val connection = URI.create(imageUri).toURL().openConnection();
-            connection.setConnectTimeout(4000);
-            connection.setReadTimeout(5000);
+            HttpURLConnection connection = (HttpURLConnection) URI.create(imageUri).toURL().openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setConnectTimeout(6000);
+            connection.setReadTimeout(7000);
             connection.setRequestProperty("User-Agent", "simple-mindmaps-export/1.0");
-            try (InputStream in = connection.getInputStream()) {
-                return ImageIO.read(in);
+            connection.setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
+            connection.connect();
+            try (InputStream in = connection.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+                in.transferTo(out);
+                return decodeImageBytes(out.toByteArray(), connection.getContentType());
             }
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private BufferedImage decodeImageBytes(byte[] bytes, String contentType) {
+        if (bytes == null || bytes.length == 0) return null;
+        String type = contentType == null ? "" : contentType.toLowerCase();
+        try {
+            if (type.contains("svg")) {
+                return rasterizeSvg(bytes);
+            }
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+            if (image != null) return image;
+            if (looksLikeSvg(bytes)) return rasterizeSvg(bytes);
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private boolean looksLikeSvg(byte[] bytes) {
+        String head = new String(bytes, 0, Math.min(bytes.length, 500), StandardCharsets.UTF_8).toLowerCase();
+        return head.contains("<svg");
+    }
+
+    private BufferedImage rasterizeSvg(byte[] svgBytes) {
+        try {
+            val transcoder = new org.apache.batik.transcoder.image.PNGTranscoder();
+            val input = new org.apache.batik.transcoder.TranscoderInput(new ByteArrayInputStream(svgBytes));
+            val output = new ByteArrayOutputStream();
+            val out = new org.apache.batik.transcoder.TranscoderOutput(output);
+            transcoder.transcode(input, out);
+            return ImageIO.read(new ByteArrayInputStream(output.toByteArray()));
         } catch (Exception ignored) {
             return null;
         }
@@ -190,8 +322,26 @@ public class MindMapExportRenderer {
         return lines;
     }
 
+
+    private int resolveFontSize(NodeDto node) {
+        if (node == null || node.getFontSize() <= 0) return 16;
+        return Math.max(10, node.getFontSize());
+    }
+
     private boolean hasImage(NodeDto node) {
         return node.getImageUri() != null && !node.getImageUri().isBlank();
+    }
+
+
+    private Color resolveTextColor(String backgroundHex) {
+        Color bg = parseColor(backgroundHex);
+        double luminance = (0.299 * bg.getRed() + 0.587 * bg.getGreen() + 0.114 * bg.getBlue()) / 255d;
+        return luminance < 0.55 ? Color.WHITE : Color.BLACK;
+    }
+
+    private Color resolveSecondaryTextColor(String backgroundHex) {
+        Color primary = resolveTextColor(backgroundHex);
+        return primary.equals(Color.WHITE) ? new Color(230, 230, 230) : new Color(58, 58, 58);
     }
 
     private Color parseColor(String hex) {
