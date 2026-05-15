@@ -696,6 +696,7 @@ function openContextMenu(event, nodeId) {
 
     const content = document.createElement("div");
     content.className = "node-context-menu";
+    content.style.position = "fixed";
     content.style.left = `${event.clientX}px`;
     content.style.top = `${event.clientY}px`;
     content.innerHTML = `
@@ -707,47 +708,81 @@ function openContextMenu(event, nodeId) {
     `;
 
     document.body.appendChild(content);
+
     let cleanupAutoUpdate = null;
-    if (globalThis.FloatingUIDOM?.computePosition) {
-        const { computePosition, flip, shift, offset, autoUpdate } = globalThis.FloatingUIDOM;
+
+    const floating = globalThis.window?.FloatingUIDOM;
+
+    if (floating?.computePosition) {
+        const {
+            computePosition,
+            flip,
+            shift,
+            offset,
+            autoUpdate
+        } = floating;
+
         const virtualReference = {
             getBoundingClientRect() {
-                return {
+                return DOMRect.fromRect({
                     x: event.clientX,
                     y: event.clientY,
-                    left: event.clientX,
-                    top: event.clientY,
-                    right: event.clientX,
-                    bottom: event.clientY,
                     width: 0,
                     height: 0
-                };
-            }
+                });
+            },
+            contextElement: content
         };
-        const updateMenuPosition = () => computePosition(virtualReference, content, {
-            placement: "right-start",
-            middleware: [offset(8), flip(), shift({ padding: 8 })]
-        }).then(({ x, y }) => {
-            content.style.left = `${x}px`;
-            content.style.top = `${y}px`;
-        });
-        try {
-            cleanupAutoUpdate = autoUpdate(virtualReference, content, updateMenuPosition);
-            updateMenuPosition();
-        } catch (error) {
-            cleanupAutoUpdate = null;
+
+        const updateMenuPosition = () => {
+            return computePosition(virtualReference, content, {
+                placement: "right-start",
+                strategy: "fixed",
+                middleware: [
+                    offset(8),
+                    flip(),
+                    shift({ padding: 8 })
+                ]
+            }).then(({ x, y }) => {
+                content.style.left = `${Math.round(x)}px`;
+                content.style.top = `${Math.round(y)}px`;
+            }).catch(() => {
+                content.style.left = `${event.clientX}px`;
+                content.style.top = `${event.clientY}px`;
+            });
+        };
+
+        updateMenuPosition();
+
+        if (typeof autoUpdate === "function") {
+            try {
+                cleanupAutoUpdate = autoUpdate(
+                    virtualReference,
+                    content,
+                    updateMenuPosition
+                );
+            } catch {
+                cleanupAutoUpdate = null;
+            }
         }
     }
-    state.contextMenu = { content, cleanupAutoUpdate, openedAt: Date.now() };
+
+    state.contextMenu = {
+        content,
+        cleanupAutoUpdate,
+        openedAt: Date.now()
+    };
 
     content.addEventListener("click", async actionEvent => {
         const action = actionEvent.target?.dataset?.action;
         if (!action) return;
+
         if (action === "add-child") await addChildNode(nodeId);
         if (action === "edit-text") await quickEdit(nodeId);
         if (action === "edit-branch") await quickEditBranchText(nodeId);
         if (action === "upload-image") startImageUploadForNode(nodeId);
         if (action === "delete") await deleteNodeWithChecks(nodeId);
+
         closeContextMenu();
     });
 }
