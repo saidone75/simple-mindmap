@@ -69,6 +69,28 @@ public class MindMapRestController {
         mindMapService.deleteNode(nodeId);
     }
 
+
+    @PostMapping(value = "/maps/{id}/export/png", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> exportPngFromCanvas(@PathVariable Long id, @RequestBody ExportSvgRequest request) throws Exception {
+        val map = mindMapService.findMapWithNodes(id);
+        val pngBytes = mindMapExportRenderer.renderSvgPng(request == null ? null : request.getSvg());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(mindMapExportRenderer.slugify(map.getTitle())))
+                .body(pngBytes);
+    }
+
+    @PostMapping(value = "/maps/{id}/export/pdf", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> exportPdfFromCanvas(@PathVariable Long id,
+                                                      @RequestParam(defaultValue = "a4") String format,
+                                                      @RequestBody ExportSvgRequest request) throws Exception {
+        val map = mindMapService.findMapWithNodes(id);
+        val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
+        val pdfBytes = mindMapExportRenderer.renderSvgPdf(request == null ? null : request.getSvg(), normalizedFormat);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(mindMapExportRenderer.slugify(map.getTitle()), normalizedFormat))
+                .body(pdfBytes);
+    }
+
     @GetMapping(value = "/maps/{id}/export/png", produces = MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> exportPng(@PathVariable Long id) throws Exception {
         val map = mindMapService.findMapWithNodes(id);
