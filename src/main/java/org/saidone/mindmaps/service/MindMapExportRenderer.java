@@ -4,6 +4,9 @@ import lombok.val;
 import org.saidone.mindmaps.dto.MindMapDto;
 import org.saidone.mindmaps.dto.NodeDto;
 import org.springframework.stereotype.Component;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -20,9 +23,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 @Component
 public class MindMapExportRenderer {
@@ -143,7 +143,6 @@ public class MindMapExportRenderer {
         }
     }
 
-
     public byte[] renderSvgPng(String svg) throws Exception {
         if (svg == null || svg.isBlank()) throw new IllegalArgumentException("SVG vuoto");
         String sanitizedSvg = sanitizeSvgForBatik(svg);
@@ -181,7 +180,6 @@ public class MindMapExportRenderer {
         }
     }
 
-
     private String sanitizeSvgForBatik(String svg) {
         try {
             val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
@@ -209,7 +207,6 @@ public class MindMapExportRenderer {
             return svg;
         }
     }
-
 
     private void normalizeConnectorStrokesForBatik(Document document) {
         NodeList connectors = document.getElementsByTagName("path");
@@ -248,10 +245,6 @@ public class MindMapExportRenderer {
 
     public String normalizePdfFormat(String format) {
         return "a3".equalsIgnoreCase(format) ? "a3" : "a4";
-    }
-    public String slugify(String value) {
-        if (value == null || value.isBlank()) return "mappa";
-        return value.toLowerCase().replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "");
     }
 
     private BufferedImage readNodeImage(String imageUri) {
@@ -337,7 +330,6 @@ public class MindMapExportRenderer {
         return lines;
     }
 
-
     private int resolveFontSize(NodeDto node) {
         if (node == null || node.getFontSize() <= 0) return 16;
         return Math.max(10, node.getFontSize());
@@ -346,7 +338,6 @@ public class MindMapExportRenderer {
     private boolean hasImage(NodeDto node) {
         return node.getImageUri() != null && !node.getImageUri().isBlank();
     }
-
 
     private Color resolveTextColor(String backgroundHex) {
         Color bg = parseColor(backgroundHex);
@@ -366,4 +357,5 @@ public class MindMapExportRenderer {
             return new Color(255, 217, 102);
         }
     }
+
 }
