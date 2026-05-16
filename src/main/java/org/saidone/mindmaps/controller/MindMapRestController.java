@@ -18,6 +18,7 @@
 
 package org.saidone.mindmaps.controller;
 
+import com.github.slugify.Slugify;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.*;
@@ -38,6 +39,8 @@ public class MindMapRestController {
 
     private final MindMapService mindMapService;
     private final MindMapExportRenderer mindMapExportRenderer;
+
+    private static final Slugify SLG = Slugify.builder().build();
 
     @GetMapping("/maps/{id}")
     public MindMapDto getMap(@PathVariable Long id) {
@@ -75,7 +78,7 @@ public class MindMapRestController {
         val map = mindMapService.findMapWithNodes(id);
         val pngBytes = mindMapExportRenderer.renderSvgPng(request == null ? null : request.getSvg());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(mindMapExportRenderer.slugify(map.getTitle())))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(SLG.slugify(map.getTitle())))
                 .body(pngBytes);
     }
 
@@ -87,7 +90,7 @@ public class MindMapRestController {
         val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
         val pdfBytes = mindMapExportRenderer.renderSvgPdf(request == null ? null : request.getSvg(), normalizedFormat);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(mindMapExportRenderer.slugify(map.getTitle()), normalizedFormat))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(SLG.slugify(map.getTitle()), normalizedFormat))
                 .body(pdfBytes);
     }
 
@@ -98,7 +101,7 @@ public class MindMapRestController {
         val output = new ByteArrayOutputStream();
         ImageIO.write(image, "png", output);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(mindMapExportRenderer.slugify(map.getTitle())))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(SLG.slugify(map.getTitle())))
                 .body(output.toByteArray());
     }
 
@@ -108,7 +111,7 @@ public class MindMapRestController {
         val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
         val pdfBytes = mindMapExportRenderer.renderMapPdf(map, normalizedFormat);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(mindMapExportRenderer.slugify(map.getTitle()), normalizedFormat))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(SLG.slugify(map.getTitle()), normalizedFormat))
                 .body(pdfBytes);
     }
 

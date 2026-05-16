@@ -139,6 +139,12 @@
             <version>3.3.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.slugify</groupId>
+            <artifactId>slugify</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
         <!-- DJL core -->
         <dependency>
             <groupId>ai.djl</groupId>
