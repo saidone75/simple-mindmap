@@ -475,13 +475,17 @@ function applyBranchStyle(path, node, depth = 1) {
     const strokeColor = node.branchColor || "#7c8a9a";
 
     path.style.stroke = strokeColor;
+    path.setAttribute("stroke", strokeColor);
     const configuredWidth = Number(node.branchWidth);
     const depthWidth = Math.max(2, 6 - Math.min(depth, 4));
     const baseWidth = Number.isFinite(configuredWidth) && configuredWidth > 0 ? configuredWidth : depthWidth;
     path.style.strokeWidth = String(baseWidth);
+    path.setAttribute("stroke-width", String(baseWidth));
     path.removeAttribute("stroke-dasharray");
     path.removeAttribute("marker-end");
     path.style.strokeLinecap = "round";
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
 
     switch (style) {
         case "DASHED":
@@ -544,7 +548,9 @@ function render() {
                 if (sketchPreset) {
                     path.classList.add("connector-sketch");
                     path.removeAttribute("marker-end");
-                    path.style.strokeWidth = String(Math.max(2.5, 5.5 - Math.min(depth, 3)));
+                    const sketchStrokeWidth = String(Math.max(2.5, 5.5 - Math.min(depth, 3)));
+                    path.style.strokeWidth = sketchStrokeWidth;
+                    path.setAttribute("stroke-width", sketchStrokeWidth);
                 }
                 svg.appendChild(path);
                 renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);

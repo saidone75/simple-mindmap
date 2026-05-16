@@ -122,11 +122,10 @@ public class MindMapExportRenderer {
     public byte[] renderMapPdf(MindMapDto map, String format) throws Exception {
         val image = renderMapImage(map);
         val pageRect = "a3".equalsIgnoreCase(format) ? org.apache.pdfbox.pdmodel.common.PDRectangle.A3 : org.apache.pdfbox.pdmodel.common.PDRectangle.A4;
-        try (val document = new org.apache.pdfbox.pdmodel.PDDocument(); val imageBytes = new java.io.ByteArrayOutputStream()) {
-            ImageIO.write(image, "jpg", imageBytes);
+        try (val document = new org.apache.pdfbox.pdmodel.PDDocument()) {
             val page = new org.apache.pdfbox.pdmodel.PDPage(new org.apache.pdfbox.pdmodel.common.PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
             document.addPage(page);
-            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(document, imageBytes.toByteArray());
+            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(document, image);
             try (val stream = new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
                 float margin = 24f;
                 float usableW = page.getMediaBox().getWidth() - margin * 2;
@@ -163,9 +162,8 @@ public class MindMapExportRenderer {
         try (val document = new org.apache.pdfbox.pdmodel.PDDocument()) {
             val page = new org.apache.pdfbox.pdmodel.PDPage(new org.apache.pdfbox.pdmodel.common.PDRectangle(pageRect.getHeight(), pageRect.getWidth()));
             document.addPage(page);
-            val jpegOut = new ByteArrayOutputStream();
-            ImageIO.write(image, "jpg", jpegOut);
-            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory.createFromByteArray(document, jpegOut.toByteArray());
+            if (image == null) throw new IllegalArgumentException("PNG export vuoto");
+            val pdImage = org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory.createFromImage(document, image);
             try (val stream = new org.apache.pdfbox.pdmodel.PDPageContentStream(document, page)) {
                 float margin = 24f;
                 float usableW = page.getMediaBox().getWidth() - margin * 2;
@@ -190,6 +188,7 @@ public class MindMapExportRenderer {
             factory.setNamespaceAware(true);
             val builder = factory.newDocumentBuilder();
             Document document = builder.parse(new org.xml.sax.InputSource(new java.io.StringReader(svg)));
+            normalizeConnectorStrokesForBatik(document);
             NodeList images = document.getElementsByTagName("image");
             for (int i = images.getLength() - 1; i >= 0; i--) {
                 Element image = (Element) images.item(i);
@@ -208,6 +207,22 @@ public class MindMapExportRenderer {
             return writer.toString();
         } catch (Exception ignored) {
             return svg;
+        }
+    }
+
+
+    private void normalizeConnectorStrokesForBatik(Document document) {
+        NodeList connectors = document.getElementsByTagName("path");
+        for (int i = 0; i < connectors.getLength(); i++) {
+            Element path = (Element) connectors.item(i);
+            String className = normalize(path.getAttribute("class"));
+            if (!className.contains("connector")) continue;
+            path.removeAttribute("vector-effect");
+            String style = normalize(path.getAttribute("style"));
+            if (style.contains("vector-effect")) {
+                String cleaned = style.replaceAll("(?i)vector-effect\\s*:\\s*non-scaling-stroke\\s*;?", "");
+                path.setAttribute("style", cleaned.trim());
+            }
         }
     }
 
