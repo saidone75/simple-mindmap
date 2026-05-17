@@ -29,8 +29,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.imageio.ImageIO;
-import java.io.ByteArrayOutputStream;
 
 @RestController
 @RequiredArgsConstructor
@@ -89,27 +87,6 @@ public class MindMapRestController {
         val map = mindMapService.findMapWithNodes(id);
         val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
         val pdfBytes = mindMapExportRenderer.renderSvgPdf(request == null ? null : request.getSvg(), normalizedFormat);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(SLG.slugify(map.getTitle()), normalizedFormat))
-                .body(pdfBytes);
-    }
-
-    @GetMapping(value = "/maps/{id}/export/png", produces = MediaType.IMAGE_PNG_VALUE)
-    public ResponseEntity<byte[]> exportPng(@PathVariable Long id) throws Exception {
-        val map = mindMapService.findMapWithNodes(id);
-        val image = mindMapExportRenderer.renderMapImage(map);
-        val output = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", output);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s.png".formatted(SLG.slugify(map.getTitle())))
-                .body(output.toByteArray());
-    }
-
-    @GetMapping(value = "/maps/{id}/export/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> exportPdf(@PathVariable Long id, @RequestParam(defaultValue = "a4") String format) throws Exception {
-        val map = mindMapService.findMapWithNodes(id);
-        val normalizedFormat = mindMapExportRenderer.normalizePdfFormat(format);
-        val pdfBytes = mindMapExportRenderer.renderMapPdf(map, normalizedFormat);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=%s-%s.pdf".formatted(SLG.slugify(map.getTitle()), normalizedFormat))
                 .body(pdfBytes);
