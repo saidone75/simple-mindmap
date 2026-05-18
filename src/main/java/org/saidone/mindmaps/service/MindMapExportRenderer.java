@@ -29,7 +29,7 @@ public class MindMapExportRenderer {
 
     private static final Set<String> SUPPORTED_PDF_FORMATS = Set.of("a4", "a3", "letter", "legal");
 
-    public byte[] renderSvgPng(String svg) throws IOException, TranscoderException {
+    public byte[] renderSvgPng(String svg) throws TranscoderException, IOException {
         if (!StringUtils.hasText(svg)) {
             throw new IllegalArgumentException("SVG payload is required for PNG export");
         }
@@ -43,7 +43,7 @@ public class MindMapExportRenderer {
         }
     }
 
-    public byte[] renderSvgPdf(String svg, String format) throws Exception {
+    public byte[] renderSvgPdf(String svg, String format) throws TranscoderException, IOException {
         var pngBytes = renderSvgPng(svg);
         var image = ImageIO.read(new ByteArrayInputStream(pngBytes));
         if (image == null) {
