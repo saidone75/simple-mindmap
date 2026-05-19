@@ -51,6 +51,9 @@ public class MindMapService {
     private static final String DEFAULT_ROOT_NODE_COLOR = "var(--node-color-root)";
     private static final String DEFAULT_NODE_COLOR = "var(--node-color-default)";
     private static final String DEFAULT_BRANCH_COLOR = "var(--connector)";
+    private static final String GREEN = "var(--node-color-template-green)";
+    private static final String RED = "var(--node-color-template-red)";
+    private static final String ORANGE = "var(--node-color-template-orange)";
 
     private final MindMapRepository mindMapRepository;
     private final NodeRepository nodeRepository;
@@ -124,27 +127,27 @@ public class MindMapService {
         switch (templateKey) {
             case "italiano" -> {
                 createNode(saved.getId(), root.getId(), "Grammatica", "Regole e strutture della lingua.", 320, 120, DEFAULT_NODE_COLOR);
-                createNode(saved.getId(), root.getId(), "Lettura", "Comprensione e analisi dei testi.", 930, 120, "var(--node-color-template-green)");
-                createNode(saved.getId(), root.getId(), "Scrittura", "Produzione di testi chiari e coerenti.", 320, 420, "var(--node-color-template-red)");
-                createNode(saved.getId(), root.getId(), "Lessico", "Arricchimento del vocabolario.", 930, 420, "var(--node-color-template-orange)");
+                createNode(saved.getId(), root.getId(), "Lettura", "Comprensione e analisi dei testi.", 930, 120, GREEN);
+                createNode(saved.getId(), root.getId(), "Scrittura", "Produzione di testi chiari e coerenti.", 320, 420, RED);
+                createNode(saved.getId(), root.getId(), "Lessico", "Arricchimento del vocabolario.", 930, 420, ORANGE);
             }
             case "scienze" -> {
                 createNode(saved.getId(), root.getId(), "Animali", "Classificazione e caratteristiche principali.", 320, 120, DEFAULT_NODE_COLOR);
-                createNode(saved.getId(), root.getId(), "Piante", "Strutture e funzioni essenziali.", 930, 120, "var(--node-color-template-green)");
-                createNode(saved.getId(), root.getId(), "Corpo umano", "Sistemi e organi principali.", 320, 420, "var(--node-color-template-red)");
-                createNode(saved.getId(), root.getId(), "Esperimenti", "Attività pratiche per osservare fenomeni.", 930, 420, "var(--node-color-template-orange)");
+                createNode(saved.getId(), root.getId(), "Piante", "Strutture e funzioni essenziali.", 930, 120, GREEN);
+                createNode(saved.getId(), root.getId(), "Corpo umano", "Sistemi e organi principali.", 320, 420, RED);
+                createNode(saved.getId(), root.getId(), "Esperimenti", "Attività pratiche per osservare fenomeni.", 930, 420, ORANGE);
             }
             case "storia" -> {
                 createNode(saved.getId(), root.getId(), "Linea del tempo", "Sequenza cronologica degli eventi.", 320, 120, DEFAULT_NODE_COLOR);
-                createNode(saved.getId(), root.getId(), "Personaggi", "Figure storiche rilevanti.", 930, 120, "var(--node-color-template-green)");
-                createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, "var(--node-color-template-red)");
-                createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, "var(--node-color-template-orange)");
+                createNode(saved.getId(), root.getId(), "Personaggi", "Figure storiche rilevanti.", 930, 120, GREEN);
+                createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, RED);
+                createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, ORANGE);
             }
             case "geografia" -> {
                 createNode(saved.getId(), root.getId(), "Montagne", "Rilievi e caratteristiche.", 320, 120, DEFAULT_NODE_COLOR);
-                createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, "var(--node-color-template-green)");
-                createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, "var(--node-color-template-red)");
-                createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, "var(--node-color-template-orange)");
+                createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, GREEN);
+                createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, RED);
+                createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, ORANGE);
             }
             default -> {
             }
