@@ -486,6 +486,7 @@ function applyBranchStyle(path, node, depth = 1) {
     path.style.strokeLinecap = "round";
     path.setAttribute("stroke-linecap", "round");
     path.setAttribute("vector-effect", "non-scaling-stroke");
+    path.setAttribute("fill", "none");
 
     switch (style) {
         case "DASHED":
