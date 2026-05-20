@@ -48,6 +48,8 @@ public class MindMapService {
     private static final int MIN_NODE_HEIGHT = 60;
     private static final int MAX_NODE_HEIGHT = 1000;
     private static final String DEFAULT_STYLE_PRESET = "CLASSIC";
+    private static final String DEFAULT_SHAPE = "ROUNDED";
+    private static final String DEFAULT_BRANCH_STYLE = "SOLID";
     private static final String DEFAULT_ROOT_NODE_COLOR = "var(--node-color-root)";
     private static final String DEFAULT_NODE_COLOR = "var(--node-color-default)";
     private static final String DEFAULT_BRANCH_COLOR = "var(--connector)";
@@ -95,9 +97,9 @@ public class MindMapService {
         root.setY(260);
         root.setColor(DEFAULT_ROOT_NODE_COLOR);
         root.setFontSize(22);
-        root.setShape("ROUNDED");
+        root.setShape(DEFAULT_SHAPE);
         root.setBranchColor(DEFAULT_BRANCH_COLOR);
-        root.setBranchStyle("SOLID");
+        root.setBranchStyle(DEFAULT_BRANCH_STYLE);
         root.setImageUri(null);
         root.setImageWidth(null);
         root.setImageHeight(null);
@@ -214,9 +216,9 @@ public class MindMapService {
         node.setY(request.getY() == null ? 200 : request.getY());
         node.setColor(request.getColor() == null ? DEFAULT_NODE_COLOR : request.getColor());
         node.setFontSize(request.getFontSize() == null ? 18 : request.getFontSize());
-        node.setShape(request.getShape() == null ? "ROUNDED" : request.getShape());
+        node.setShape(request.getShape() == null ? DEFAULT_SHAPE : request.getShape());
         node.setBranchColor(request.getBranchColor() == null ? DEFAULT_BRANCH_COLOR : request.getBranchColor());
-        node.setBranchStyle(request.getBranchStyle() == null ? "SOLID" : request.getBranchStyle());
+        node.setBranchStyle(request.getBranchStyle() == null ? DEFAULT_BRANCH_STYLE : request.getBranchStyle());
         node.setImageUri(normalizeImageUri(request.getImageUri()));
         node.setImageWidth(normalizeImageSize(request.getImageWidth()));
         node.setImageHeight(normalizeImageSize(request.getImageHeight()));
@@ -355,9 +357,9 @@ public class MindMapService {
         node.setY(y);
         node.setColor(color);
         node.setFontSize(parentId == null ? 22 : 18);
-        node.setShape("ROUNDED");
+        node.setShape(DEFAULT_SHAPE);
         node.setBranchColor(DEFAULT_BRANCH_COLOR);
-        node.setBranchStyle("SOLID");
+        node.setBranchStyle(DEFAULT_BRANCH_STYLE);
         node.setImageUri(null);
         node.setImageWidth(null);
         node.setImageHeight(null);
