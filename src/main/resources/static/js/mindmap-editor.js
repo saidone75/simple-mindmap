@@ -1492,13 +1492,10 @@ function normalizeImageUri(value) {
     const trimmed = (value || "").trim();
     if (!trimmed.length) return null;
     if (trimmed.startsWith("data:image/")) return trimmed;
-    try {
-        const parsed = new URL(trimmed);
-        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
-            return parsed.toString();
-        }
-    } catch (error) {
-        return null;
+    if (!URL.canParse(trimmed)) return null;
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+        return parsed.toString();
     }
     return null;
 }
@@ -1649,7 +1646,8 @@ function convertWebpDataUriToPng(dataUri) {
                 }
                 ctx.drawImage(img, 0, 0);
                 resolve(canvas.toDataURL("image/png"));
-            } catch (_error) {
+            } catch (error) {
+                console.warn("Impossibile convertire WebP in PNG durante l'esportazione", error);
                 resolve(dataUri);
             }
         };
