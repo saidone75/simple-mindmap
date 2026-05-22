@@ -74,8 +74,8 @@
     --shadow-xstrong: rgba(15, 23, 42, 0.25);
     --shadow-node: rgba(15, 23, 42, 0.12);
     --shadow-action: rgba(30, 64, 175, 0.15);
-    --overlay-soft: rgba(255, 255, 255, 0.64);
-    --overlay-strong: rgba(255, 255, 255, 0.86);
+    --overlay-soft: rgba(255, 255, 255, 0.52);
+    --overlay-strong: rgba(255, 255, 255, 0.76);
     --backdrop-dark: rgba(15, 23, 42, 0.45);
     --node-color-root: #FFD966;
     --node-color-default: #9FC5E8;
