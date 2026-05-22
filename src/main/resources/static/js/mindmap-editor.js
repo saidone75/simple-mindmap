@@ -1298,43 +1298,55 @@ document.addEventListener("mousemove", event => {
     scheduleAutosave(node);
 });
 
-document.addEventListener("mouseup", () => {
-    const wasDragging = !!state.drag;
-    const dragMoved = !!state.drag?.moved;
-    const resizeState = state.resize ? { ...state.resize } : null;
-    if (state.drag || state.resize) {
-        commitInteractionSnapshot();
-    }
+function shouldHideNodeEditorAfterMouseup(wasDragging, dragMoved, justOpenedContextMenu) {
+    return (wasDragging && dragMoved) || justOpenedContextMenu;
+}
+
+function resetPointerInteractionState() {
     state.drag = null;
     state.resize = null;
     state.pan = null;
     state.interactionViewport = null;
     svg.classList.remove("is-panning");
     applyCanvasViewport();
-    const justOpenedContextMenu = state.contextMenu && (Date.now() - state.contextMenu.openedAt) < 250;
+}
+
+function refreshOverlaysAfterMouseup(wasDragging, dragMoved) {
     const selectedNode = getNodeById(state.selectedNodeId);
+    const justOpenedContextMenu = state.contextMenu && (Date.now() - state.contextMenu.openedAt) < 250;
     if (selectedNode) {
-        if (wasDragging && dragMoved) {
-            hideNodeEditorOverlay();
-        } else if (justOpenedContextMenu) {
+        if (shouldHideNodeEditorAfterMouseup(wasDragging, dragMoved, justOpenedContextMenu)) {
             hideNodeEditorOverlay();
         } else {
             if (nodeEditorOverlay) nodeEditorOverlay.classList.add("visible");
             updateNodeEditorOverlay(selectedNode);
         }
     }
+
     const imageOverlayNode = getNodeById(state.imageOverlayNodeId);
     if (imageOverlayNode) updateImageEditorOverlay(imageOverlayNode);
+}
 
-    if (resizeState) {
-        const resizedNode = getNodeById(resizeState.nodeId);
-        if (resizedNode) {
-            clearTimeout(state.autosaveTimer);
-            state.autosaveTimer = null;
-            state.autosaveNodeId = null;
-            runAutosave(resizedNode);
-        }
-    }
+function flushResizeAutosave(resizeState) {
+    if (!resizeState) return;
+    const resizedNode = getNodeById(resizeState.nodeId);
+    if (!resizedNode) return;
+    clearTimeout(state.autosaveTimer);
+    state.autosaveTimer = null;
+    state.autosaveNodeId = null;
+    runAutosave(resizedNode);
+}
+
+document.addEventListener("mouseup", () => {
+    const wasDragging = !!state.drag;
+    const dragMoved = !!state.drag?.moved;
+    const resizeState = state.resize ? { ...state.resize } : null;
+
+    if (state.drag || state.resize) commitInteractionSnapshot();
+
+    resetPointerInteractionState();
+    refreshOverlaysAfterMouseup(wasDragging, dragMoved);
+    flushResizeAutosave(resizeState);
 });
 
 document.addEventListener("click", event => {
