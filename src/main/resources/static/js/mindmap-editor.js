@@ -591,7 +591,7 @@ function render() {
         if (!sketchPreset && node.id === state.hoveredNodeId) {
             renderNodeActionButtons(group, node, width);
         }
-        if (!sketchPreset && node.id === state.selectedNodeId) {
+        if (!sketchPreset && (node.id === state.selectedNodeId || node.id === state.hoveredNodeId)) {
             renderNodeResizeHandle(group, node, width, height);
         }
 
@@ -1185,7 +1185,7 @@ function startImageResize(event) {
     if (!node) return;
 
     beginInteractionSnapshot();
-    selectNode(nodeId);
+    selectNode(nodeId, { showNodeOverlay: false });
     const nodeSize = getNodeSize(node);
     const bounds = getNodeImageBounds(node, nodeSize.width);
     const point = toSvgPoint(event);
@@ -1208,7 +1208,7 @@ function startNodeResize(event) {
     if (!node) return;
 
     beginInteractionSnapshot();
-    selectNode(nodeId);
+    selectNode(nodeId, { showNodeOverlay: false });
     const size = getNodeSize(node);
     const point = toSvgPoint(event);
     captureInteractionViewport();
