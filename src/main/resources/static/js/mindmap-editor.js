@@ -1677,6 +1677,9 @@ async function buildExportSvg() {
     clone.setAttribute("height", String(height));
     clone.setAttribute("viewBox", svg.getAttribute("viewBox") || `0 0 ${width} ${height}`);
 
+    const transientControls = clone.querySelectorAll(".node-resize-handle, .image-resize-handle, .node-action-button");
+    transientControls.forEach(control => control.remove());
+
     const exportImages = Array.from(clone.querySelectorAll("image"));
     for (const image of exportImages) {
         const href = await normalizeExportImageHref(image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href"));
