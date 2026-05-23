@@ -249,9 +249,9 @@ public class MindMapService {
         updateIfPresent(request.getShape(), node::setShape);
         updateIfPresent(request.getBranchColor(), node::setBranchColor);
         updateIfPresent(request.getBranchStyle(), node::setBranchStyle);
-        updateIfPresent(request.getImageUri(), value -> node.setImageUri(normalizeImageUri(value)));
-        updateIfPresent(request.getImageWidth(), value -> node.setImageWidth(normalizeImageSize(value)));
-        updateIfPresent(request.getImageHeight(), value -> node.setImageHeight(normalizeImageSize(value)));
+        node.setImageUri(normalizeImageUri(request.getImageUri()));
+        node.setImageWidth(normalizeImageSize(request.getImageWidth()));
+        node.setImageHeight(normalizeImageSize(request.getImageHeight()));
         updateIfPresent(request.getNodeWidth(), value -> node.setNodeWidth(normalizeNodeWidth(value)));
         updateIfPresent(request.getNodeHeight(), value -> node.setNodeHeight(normalizeNodeHeight(value)));
     }

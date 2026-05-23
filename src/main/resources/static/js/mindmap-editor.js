@@ -1384,6 +1384,7 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
         nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(node);
     }
+    queueAutoSubmitSelectedNode();
 });
 
 document.getElementById("clear-image-btn").addEventListener("click", () => {
@@ -1403,6 +1404,7 @@ document.getElementById("clear-image-btn").addEventListener("click", () => {
         nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(node);
     }
+    queueAutoSubmitSelectedNode();
 });
 
 imageUploadInput.addEventListener("change", event => {
@@ -1427,6 +1429,7 @@ imageUploadInput.addEventListener("change", event => {
         if (imageHeightInput) imageHeightInput.value = node.imageHeight;
         updateImageSizeLabels();
         render();
+        queueAutoSubmitSelectedNode();
     };
     reader.readAsDataURL(file);
 });
