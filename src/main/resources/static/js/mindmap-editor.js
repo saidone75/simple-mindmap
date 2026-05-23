@@ -524,166 +524,169 @@ function buildConnectorPath(node, x1, y1, x2, y2) {
     return `M ${x1} ${y1} C ${c1x} ${c1y} ${c2x} ${c2y} ${x2} ${y2}`;
 }
 
+function renderConnectors(depthMap, sketchPreset) {
+    for (const node of state.map.nodes) {
+        if (node.parentId == null) continue;
+        const parent = getNodeById(node.parentId);
+        if (!parent) continue;
+
+        const parentSize = sketchPreset ? getSketchNodeSize(parent) : getNodeSize(parent);
+        const nodeSize = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
+        const x1 = parent.x + parentSize.width / 2;
+        const y1 = parent.y + parentSize.height / 2;
+        const x2 = node.x + nodeSize.width / 2;
+        const y2 = node.y + nodeSize.height / 2;
+        const depth = depthMap.get(node.id) || 1;
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute("class", "connector");
+        path.setAttribute("d", buildConnectorPath(node, x1, y1, x2, y2));
+        applyBranchStyle(path, node, depth);
+        if (sketchPreset) {
+            path.classList.add("connector-sketch");
+            path.removeAttribute("marker-end");
+            const sketchStrokeWidth = String(Math.max(2.5, 5.5 - Math.min(depth, 3)));
+            path.style.strokeWidth = sketchStrokeWidth;
+            path.setAttribute("stroke-width", sketchStrokeWidth);
+        }
+        svg.appendChild(path);
+        renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);
+    }
+}
+
+function appendNodeText(group, node, width, height, sketchPreset, emojiValue) {
+    const text = document.createElementNS(SVG_NS, "text");
+    const lines = getNodeDisplayLines(node, sketchPreset ? 24 : (hasNodeImage(node) ? 18 : 20));
+    const fontSize = Number(node.fontSize) || 18;
+    const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
+    const firstLineY = hasNodeImage(node) && !sketchPreset
+        ? node.y + height - 16 - ((lines.length - 1) * lineHeight)
+        : emojiValue && !sketchPreset
+            ? node.y + ((height - ((lines.length - 1) * lineHeight)) / 2) + 14
+            : node.y + ((height - ((lines.length - 1) * lineHeight)) / 2);
+    text.setAttribute("class", "node-text");
+    text.setAttribute("x", node.x + width / 2);
+    text.setAttribute("y", firstLineY);
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.setAttribute("font-size", fontSize);
+    const descriptionFontSize = Math.max(12, Math.round(fontSize * 0.78));
+    lines.forEach((line, index) => {
+        const tspan = document.createElementNS(SVG_NS, "tspan");
+        tspan.setAttribute("x", node.x + width / 2);
+        tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
+        if (line.isDescription) {
+            tspan.setAttribute("font-size", String(descriptionFontSize));
+            tspan.setAttribute("font-weight", "500");
+        }
+        tspan.textContent = line.text || " ";
+        text.appendChild(tspan);
+    });
+    text.addEventListener("click", async event => {
+        event.stopPropagation();
+        await quickEdit(node.id);
+    });
+    group.appendChild(text);
+}
+
+function bindNodeGroupEvents(group, node) {
+    group.addEventListener("mousedown", startDrag);
+    group.addEventListener("click", () => selectNode(node.id));
+    group.addEventListener("dblclick", () => quickEdit(node.id));
+    group.addEventListener("mouseenter", () => {
+        if (state.hoverHideTimer) {
+            clearTimeout(state.hoverHideTimer);
+            state.hoverHideTimer = null;
+        }
+        if (state.hoveredNodeId === node.id) return;
+        state.hoveredNodeId = node.id;
+        render();
+    });
+    group.addEventListener("mouseleave", () => {
+        if (state.hoveredNodeId !== node.id) return;
+        if (state.hoverHideTimer) clearTimeout(state.hoverHideTimer);
+        state.hoverHideTimer = setTimeout(() => {
+            state.hoveredNodeId = null;
+            state.hoverHideTimer = null;
+            render();
+        }, 1800);
+    });
+    group.addEventListener("contextmenu", event => openContextMenu(event, node.id));
+}
+
+function renderNodeGroup(node, depth, sketchPreset) {
+    const { width, height } = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
+    const group = document.createElementNS(SVG_NS, "g");
+    const selectedClass = node.id === state.selectedNodeId ? " selected" : "";
+    group.setAttribute("class", `node-group${selectedClass}${sketchPreset ? " sketch-node" : ""}`);
+    group.dataset.id = node.id;
+
+    const rect = document.createElementNS(SVG_NS, "rect");
+    rect.setAttribute("x", node.x);
+    rect.setAttribute("y", node.y);
+    const isSquared = (node.shape || "").toUpperCase() === "SQUARED";
+    const radius = sketchPreset ? 16 : isSquared ? 0 : (depth === 0 ? 10 : 20);
+    rect.setAttribute("rx", radius);
+    rect.setAttribute("ry", radius);
+    rect.setAttribute("width", width);
+    rect.setAttribute("height", height);
+    rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : getNodeColor(node));
+    rect.setAttribute("stroke", sketchPreset ? "transparent" : "#546170");
+    rect.setAttribute("stroke-width", sketchPreset ? "0" : "1.5");
+    group.appendChild(rect);
+
+    if (hasNodeImage(node) && !sketchPreset) {
+        renderNodeImage(group, node, width);
+        if (node.id === state.selectedNodeId) renderImageResizeHandle(group, node, width);
+    }
+    if (!sketchPreset && node.id === state.hoveredNodeId) renderNodeActionButtons(group, node, width);
+    if (!sketchPreset && (node.id === state.selectedNodeId || node.id === state.hoveredNodeId)) {
+        renderNodeResizeHandle(group, node, width, height);
+    }
+
+    const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
+    if (emojiValue && !sketchPreset) {
+        const emoji = document.createElementNS(SVG_NS, "text");
+        emoji.setAttribute("class", "node-emoji");
+        emoji.setAttribute("x", node.x + width / 2);
+        emoji.setAttribute("y", node.y + 28);
+        emoji.setAttribute("text-anchor", "middle");
+        emoji.setAttribute("dominant-baseline", "middle");
+        emoji.textContent = emojiValue;
+        emoji.addEventListener("click", async event => {
+            event.stopPropagation();
+            await quickEdit(node.id);
+        });
+        group.appendChild(emoji);
+    }
+
+    appendNodeText(group, node, width, height, sketchPreset, emojiValue);
+
+    if (sketchPreset) {
+        const underline = document.createElementNS(SVG_NS, "path");
+        const underlineY = node.y + height - 10;
+        const left = node.x + 10;
+        const right = node.x + width - 10;
+        const mid = (left + right) / 2;
+        underline.setAttribute("d", `M ${left} ${underlineY} Q ${mid} ${underlineY + 8} ${right} ${underlineY}`);
+        underline.setAttribute("stroke", node.branchColor || "#2f855a");
+        underline.setAttribute("stroke-width", depth === 0 ? "3.8" : "2.6");
+        underline.setAttribute("fill", "none");
+        underline.setAttribute("stroke-linecap", "round");
+        group.appendChild(underline);
+    }
+
+    bindNodeGroupEvents(group, node);
+    svg.appendChild(group);
+}
+
 function render() {
     svg.innerHTML = "";
     renderConnectorDefs();
     renderGrid(getViewportForRender());
     const depthMap = buildDepthMap(state.map.nodes);
     const sketchPreset = isSketchPreset();
-
-    for (const node of state.map.nodes) {
-        if (node.parentId != null) {
-            const parent = getNodeById(node.parentId);
-            if (parent) {
-                const parentSize = sketchPreset ? getSketchNodeSize(parent) : getNodeSize(parent);
-                const nodeSize = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
-                const path = document.createElementNS(SVG_NS, "path");
-                const x1 = parent.x + parentSize.width / 2;
-                const y1 = parent.y + parentSize.height / 2;
-                const x2 = node.x + nodeSize.width / 2;
-                const y2 = node.y + nodeSize.height / 2;
-                const depth = depthMap.get(node.id) || 1;
-                path.setAttribute("class", "connector");
-                path.setAttribute("d", buildConnectorPath(node, x1, y1, x2, y2));
-                applyBranchStyle(path, node, depth);
-                if (sketchPreset) {
-                    path.classList.add("connector-sketch");
-                    path.removeAttribute("marker-end");
-                    const sketchStrokeWidth = String(Math.max(2.5, 5.5 - Math.min(depth, 3)));
-                    path.style.strokeWidth = sketchStrokeWidth;
-                    path.setAttribute("stroke-width", sketchStrokeWidth);
-                }
-                svg.appendChild(path);
-                renderBranchLabel(node, (x1 + x2) / 2, (y1 + y2) / 2, x1, y1, x2, y2);
-            }
-        }
-    }
-
-    for (const node of state.map.nodes) {
-        const depth = depthMap.get(node.id) || 0;
-        const { width, height } = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
-        const group = document.createElementNS(SVG_NS, "g");
-        const selectedClass = node.id === state.selectedNodeId ? " selected" : "";
-        group.setAttribute("class", `node-group${selectedClass}${sketchPreset ? " sketch-node" : ""}`);
-        group.dataset.id = node.id;
-
-        const rect = document.createElementNS(SVG_NS, "rect");
-        rect.setAttribute("x", node.x);
-        rect.setAttribute("y", node.y);
-        const isSquared = (node.shape || "").toUpperCase() === "SQUARED";
-        const radius = sketchPreset ? 16 : isSquared ? 0 : (depth === 0 ? 10 : 20);
-        rect.setAttribute("rx", radius);
-        rect.setAttribute("ry", radius);
-        rect.setAttribute("width", width);
-        rect.setAttribute("height", height);
-        rect.setAttribute("fill", sketchPreset ? "rgba(255,255,255,0.001)" : getNodeColor(node));
-        rect.setAttribute("stroke", sketchPreset ? "transparent" : "#546170");
-        rect.setAttribute("stroke-width", sketchPreset ? "0" : "1.5");
-        group.appendChild(rect);
-
-        if (hasNodeImage(node) && !sketchPreset) {
-            renderNodeImage(group, node, width);
-            if (node.id === state.selectedNodeId) {
-                renderImageResizeHandle(group, node, width);
-            }
-        }
-
-        if (!sketchPreset && node.id === state.hoveredNodeId) {
-            renderNodeActionButtons(group, node, width);
-        }
-        if (!sketchPreset && (node.id === state.selectedNodeId || node.id === state.hoveredNodeId)) {
-            renderNodeResizeHandle(group, node, width, height);
-        }
-
-        const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
-        if (emojiValue && !sketchPreset) {
-            const emoji = document.createElementNS(SVG_NS, "text");
-            emoji.setAttribute("class", "node-emoji");
-            emoji.setAttribute("x", node.x + width / 2);
-            emoji.setAttribute("y", node.y + 28);
-            emoji.setAttribute("text-anchor", "middle");
-            emoji.setAttribute("dominant-baseline", "middle");
-            emoji.textContent = emojiValue;
-            emoji.addEventListener("click", async event => {
-                event.stopPropagation();
-                await quickEdit(node.id);
-            });
-            group.appendChild(emoji);
-        }
-
-        const text = document.createElementNS(SVG_NS, "text");
-        const lines = getNodeDisplayLines(node, sketchPreset ? 24 : (hasNodeImage(node) ? 18 : 20));
-        const fontSize = Number(node.fontSize) || 18;
-        const lineHeight = Math.max(16, Math.round(fontSize * 1.2));
-        const firstLineY = hasNodeImage(node) && !sketchPreset
-            ? node.y + height - 16 - ((lines.length - 1) * lineHeight)
-            : emojiValue && !sketchPreset
-                ? node.y + ((height - ((lines.length - 1) * lineHeight)) / 2) + 14
-            : node.y + ((height - ((lines.length - 1) * lineHeight)) / 2);
-        text.setAttribute("class", "node-text");
-        text.setAttribute("x", node.x + width / 2);
-        text.setAttribute("y", firstLineY);
-        text.setAttribute("text-anchor", "middle");
-        text.setAttribute("dominant-baseline", "middle");
-        text.setAttribute("font-size", fontSize);
-        const descriptionFontSize = Math.max(12, Math.round(fontSize * 0.78));
-        lines.forEach((line, index) => {
-            const tspan = document.createElementNS(SVG_NS, "tspan");
-            tspan.setAttribute("x", node.x + width / 2);
-            tspan.setAttribute("dy", index === 0 ? "0" : String(lineHeight));
-            if (line.isDescription) {
-                tspan.setAttribute("font-size", String(descriptionFontSize));
-                tspan.setAttribute("font-weight", "500");
-            }
-            tspan.textContent = line.text || " ";
-            text.appendChild(tspan);
-        });
-        text.addEventListener("click", async event => {
-            event.stopPropagation();
-            await quickEdit(node.id);
-        });
-        group.appendChild(text);
-
-        if (sketchPreset) {
-            const underline = document.createElementNS(SVG_NS, "path");
-            const underlineY = node.y + height - 10;
-            const left = node.x + 10;
-            const right = node.x + width - 10;
-            const mid = (left + right) / 2;
-            underline.setAttribute("d", `M ${left} ${underlineY} Q ${mid} ${underlineY + 8} ${right} ${underlineY}`);
-            underline.setAttribute("stroke", node.branchColor || "#2f855a");
-            underline.setAttribute("stroke-width", depth === 0 ? "3.8" : "2.6");
-            underline.setAttribute("fill", "none");
-            underline.setAttribute("stroke-linecap", "round");
-            group.appendChild(underline);
-        }
-
-        group.addEventListener("mousedown", startDrag);
-        group.addEventListener("click", () => selectNode(node.id));
-        group.addEventListener("dblclick", () => quickEdit(node.id));
-        group.addEventListener("mouseenter", () => {
-            if (state.hoverHideTimer) {
-                clearTimeout(state.hoverHideTimer);
-                state.hoverHideTimer = null;
-            }
-            if (state.hoveredNodeId === node.id) return;
-            state.hoveredNodeId = node.id;
-            render();
-        });
-        group.addEventListener("mouseleave", () => {
-            if (state.hoveredNodeId !== node.id) return;
-            if (state.hoverHideTimer) {
-                clearTimeout(state.hoverHideTimer);
-            }
-            state.hoverHideTimer = setTimeout(() => {
-                state.hoveredNodeId = null;
-                state.hoverHideTimer = null;
-                render();
-            }, 1800);
-        });
-        group.addEventListener("contextmenu", event => openContextMenu(event, node.id));
-        svg.appendChild(group);
-    }
+    renderConnectors(depthMap, sketchPreset);
+    for (const node of state.map.nodes) renderNodeGroup(node, depthMap.get(node.id) || 0, sketchPreset);
     applyCanvasViewport();
     const selectedNode = getNodeById(state.selectedNodeId);
     if (selectedNode) {
@@ -1384,6 +1387,7 @@ document.getElementById("apply-image-url-btn").addEventListener("click", () => {
         nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(node);
     }
+    queueAutoSubmitSelectedNode();
 });
 
 document.getElementById("clear-image-btn").addEventListener("click", () => {
@@ -1403,6 +1407,7 @@ document.getElementById("clear-image-btn").addEventListener("click", () => {
         nodeEditorOverlay.classList.add("visible");
         updateNodeEditorOverlay(node);
     }
+    queueAutoSubmitSelectedNode();
 });
 
 imageUploadInput.addEventListener("change", event => {
@@ -1427,6 +1432,7 @@ imageUploadInput.addEventListener("change", event => {
         if (imageHeightInput) imageHeightInput.value = node.imageHeight;
         updateImageSizeLabels();
         render();
+        queueAutoSubmitSelectedNode();
     };
     reader.readAsDataURL(file);
 });
