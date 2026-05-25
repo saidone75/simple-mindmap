@@ -248,7 +248,7 @@ input[type="file"] {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
 }
-.canvas-panel { padding: 14px; overflow: auto; }
+.canvas-panel { padding: 14px; overflow: auto; position: relative; }
 .canvas-hint {
     margin-bottom: 10px;
     color: var(--muted);
@@ -483,9 +483,6 @@ input[type="file"] {
 }
 .node-editor-overlay.visible {
     display: block;
-}
-.canvas-panel {
-    position: relative;
 }
 .node-editor-overlay .small-btn {
     padding: 8px 10px;
