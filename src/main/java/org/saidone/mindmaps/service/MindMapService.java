@@ -151,8 +151,6 @@ public class MindMapService {
                 createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, RED);
                 createNode(saved.getId(), root.getId(), "Città", "Centri urbani principali.", 930, 420, ORANGE);
             }
-            default -> {
-            }
         }
         return saved;
     }
