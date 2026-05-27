@@ -145,7 +145,7 @@ public class MindMapService {
                 createNode(saved.getId(), root.getId(), "Eventi", "Fatti chiave da ricordare.", 320, 420, RED);
                 createNode(saved.getId(), root.getId(), "Luoghi", "Aree geografiche coinvolte.", 930, 420, ORANGE);
             }
-            case "geografia" -> {
+            default -> {
                 createNode(saved.getId(), root.getId(), "Montagne", "Rilievi e caratteristiche.", 320, 120, DEFAULT_NODE_COLOR);
                 createNode(saved.getId(), root.getId(), "Fiumi", "Corsi d'acqua principali.", 930, 120, GREEN);
                 createNode(saved.getId(), root.getId(), "Clima", "Condizioni meteo tipiche.", 320, 420, RED);
