@@ -613,18 +613,25 @@ function bindNodeGroupEvents(group, node) {
     group.addEventListener("contextmenu", event => openContextMenu(event, node.id));
 }
 
-function renderNodeGroup(node, depth, sketchPreset) {
-    const { width, height } = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
+function createNodeGroupElement(node, sketchPreset) {
     const group = document.createElementNS(SVG_NS, "g");
     const selectedClass = node.id === state.selectedNodeId ? " selected" : "";
     group.setAttribute("class", `node-group${selectedClass}${sketchPreset ? " sketch-node" : ""}`);
     group.dataset.id = node.id;
+    return group;
+}
 
+function getNodeCornerRadius(node, depth, sketchPreset) {
+    if (sketchPreset) return 16;
+    if ((node.shape || "").toUpperCase() === "SQUARED") return 0;
+    return depth === 0 ? 10 : 20;
+}
+
+function appendNodeBackground(group, node, width, height, depth, sketchPreset) {
     const rect = document.createElementNS(SVG_NS, "rect");
+    const radius = getNodeCornerRadius(node, depth, sketchPreset);
     rect.setAttribute("x", node.x);
     rect.setAttribute("y", node.y);
-    const isSquared = (node.shape || "").toUpperCase() === "SQUARED";
-    const radius = sketchPreset ? 16 : isSquared ? 0 : (depth === 0 ? 10 : 20);
     rect.setAttribute("rx", radius);
     rect.setAttribute("ry", radius);
     rect.setAttribute("width", width);
@@ -633,47 +640,66 @@ function renderNodeGroup(node, depth, sketchPreset) {
     rect.setAttribute("stroke", sketchPreset ? "transparent" : "#546170");
     rect.setAttribute("stroke-width", sketchPreset ? "0" : "1.5");
     group.appendChild(rect);
+}
 
-    if (hasNodeImage(node) && !sketchPreset) {
-        renderNodeImage(group, node, width);
-        if (node.id === state.selectedNodeId) renderImageResizeHandle(group, node, width);
-    }
-    if (!sketchPreset && node.id === state.hoveredNodeId) renderNodeActionButtons(group, node, width);
-    if (!sketchPreset && (node.id === state.selectedNodeId || node.id === state.hoveredNodeId)) {
+function appendNodeImageContent(group, node, width, sketchPreset) {
+    if (sketchPreset || !hasNodeImage(node)) return;
+    renderNodeImage(group, node, width);
+    if (node.id === state.selectedNodeId) renderImageResizeHandle(group, node, width);
+}
+
+function appendNodeInteractionControls(group, node, width, height, sketchPreset) {
+    if (sketchPreset) return;
+    if (node.id === state.hoveredNodeId) renderNodeActionButtons(group, node, width);
+    if (node.id === state.selectedNodeId || node.id === state.hoveredNodeId) {
         renderNodeResizeHandle(group, node, width, height);
     }
+}
 
+function appendNodeEmoji(group, node, width, emojiValue, sketchPreset) {
+    if (!emojiValue || sketchPreset) return;
+
+    const emoji = document.createElementNS(SVG_NS, "text");
+    emoji.setAttribute("class", "node-emoji");
+    emoji.setAttribute("x", node.x + width / 2);
+    emoji.setAttribute("y", node.y + 28);
+    emoji.setAttribute("text-anchor", "middle");
+    emoji.setAttribute("dominant-baseline", "middle");
+    emoji.textContent = emojiValue;
+    emoji.addEventListener("click", async event => {
+        event.stopPropagation();
+        await quickEdit(node.id);
+    });
+    group.appendChild(emoji);
+}
+
+function appendSketchUnderline(group, node, width, height, depth, sketchPreset) {
+    if (!sketchPreset) return;
+
+    const underline = document.createElementNS(SVG_NS, "path");
+    const underlineY = node.y + height - 10;
+    const left = node.x + 10;
+    const right = node.x + width - 10;
+    const mid = (left + right) / 2;
+    underline.setAttribute("d", `M ${left} ${underlineY} Q ${mid} ${underlineY + 8} ${right} ${underlineY}`);
+    underline.setAttribute("stroke", node.branchColor || "#2f855a");
+    underline.setAttribute("stroke-width", depth === 0 ? "3.8" : "2.6");
+    underline.setAttribute("fill", "none");
+    underline.setAttribute("stroke-linecap", "round");
+    group.appendChild(underline);
+}
+
+function renderNodeGroup(node, depth, sketchPreset) {
+    const { width, height } = sketchPreset ? getSketchNodeSize(node) : getNodeSize(node);
+    const group = createNodeGroupElement(node, sketchPreset);
     const emojiValue = hasNodeImage(node) ? "" : normalizeNodeEmoji(node.emoji);
-    if (emojiValue && !sketchPreset) {
-        const emoji = document.createElementNS(SVG_NS, "text");
-        emoji.setAttribute("class", "node-emoji");
-        emoji.setAttribute("x", node.x + width / 2);
-        emoji.setAttribute("y", node.y + 28);
-        emoji.setAttribute("text-anchor", "middle");
-        emoji.setAttribute("dominant-baseline", "middle");
-        emoji.textContent = emojiValue;
-        emoji.addEventListener("click", async event => {
-            event.stopPropagation();
-            await quickEdit(node.id);
-        });
-        group.appendChild(emoji);
-    }
 
+    appendNodeBackground(group, node, width, height, depth, sketchPreset);
+    appendNodeImageContent(group, node, width, sketchPreset);
+    appendNodeInteractionControls(group, node, width, height, sketchPreset);
+    appendNodeEmoji(group, node, width, emojiValue, sketchPreset);
     appendNodeText(group, node, width, height, sketchPreset, emojiValue);
-
-    if (sketchPreset) {
-        const underline = document.createElementNS(SVG_NS, "path");
-        const underlineY = node.y + height - 10;
-        const left = node.x + 10;
-        const right = node.x + width - 10;
-        const mid = (left + right) / 2;
-        underline.setAttribute("d", `M ${left} ${underlineY} Q ${mid} ${underlineY + 8} ${right} ${underlineY}`);
-        underline.setAttribute("stroke", node.branchColor || "#2f855a");
-        underline.setAttribute("stroke-width", depth === 0 ? "3.8" : "2.6");
-        underline.setAttribute("fill", "none");
-        underline.setAttribute("stroke-linecap", "round");
-        group.appendChild(underline);
-    }
+    appendSketchUnderline(group, node, width, height, depth, sketchPreset);
 
     bindNodeGroupEvents(group, node);
     svg.appendChild(group);
