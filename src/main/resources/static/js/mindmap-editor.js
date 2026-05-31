@@ -2006,41 +2006,68 @@ function getLayoutNodeSize(node) {
 function resolveNodeOverlaps(nodes) {
     const padding = 28;
     for (let iteration = 0; iteration < 80; iteration += 1) {
-        let moved = false;
-        for (let i = 0; i < nodes.length; i += 1) {
-            const first = nodes[i];
-            const firstSize = getLayoutNodeSize(first);
-            const firstCenterX = first.x + (firstSize.width / 2);
-            const firstCenterY = first.y + (firstSize.height / 2);
-            for (let j = i + 1; j < nodes.length; j += 1) {
-                const second = nodes[j];
-                const secondSize = getLayoutNodeSize(second);
-                const secondCenterX = second.x + (secondSize.width / 2);
-                const secondCenterY = second.y + (secondSize.height / 2);
-
-                const overlapX = (firstSize.width + secondSize.width) / 2 + padding - Math.abs(firstCenterX - secondCenterX);
-                const overlapY = (firstSize.height + secondSize.height) / 2 + padding - Math.abs(firstCenterY - secondCenterY);
-
-                if (overlapX > 0 && overlapY > 0) {
-                    moved = true;
-                    const deltaX = secondCenterX - firstCenterX;
-                    const deltaY = secondCenterY - firstCenterY;
-                    const fallbackX = ((first.id * 37 + second.id * 19) % 2 === 0) ? 1 : -1;
-                    const fallbackY = ((first.id * 13 + second.id * 17) % 2 === 0) ? 1 : -1;
-                    const directionX = Math.abs(deltaX) < 0.001 ? fallbackX : Math.sign(deltaX);
-                    const directionY = Math.abs(deltaY) < 0.001 ? fallbackY : Math.sign(deltaY);
-                    const shiftX = Math.max(1, Math.round((overlapX / 2) * directionX));
-                    const shiftY = Math.max(1, Math.round((overlapY / 2) * directionY));
-
-                    first.x -= shiftX;
-                    second.x += shiftX;
-                    first.y -= shiftY;
-                    second.y += shiftY;
-                }
-            }
-        }
-        if (!moved) break;
+        if (!resolveOverlapIteration(nodes, padding)) break;
     }
+}
+
+function resolveOverlapIteration(nodes, padding) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i += 1) {
+        for (let j = i + 1; j < nodes.length; j += 1) {
+            moved = resolveNodePairOverlap(nodes[i], nodes[j], padding) || moved;
+        }
+    }
+    return moved;
+}
+
+function resolveNodePairOverlap(first, second, padding) {
+    const firstBox = getNodeLayoutBox(first);
+    const secondBox = getNodeLayoutBox(second);
+    const overlap = getNodeBoxOverlap(firstBox, secondBox, padding);
+    if (!overlap) return false;
+
+    const shift = getOverlapShift(first, second, firstBox, secondBox, overlap);
+    applyOverlapShift(first, second, shift);
+    return true;
+}
+
+function getNodeLayoutBox(node) {
+    const size = getLayoutNodeSize(node);
+    return {
+        centerX: node.x + (size.width / 2),
+        centerY: node.y + (size.height / 2),
+        height: size.height,
+        width: size.width
+    };
+}
+
+function getNodeBoxOverlap(firstBox, secondBox, padding) {
+    const overlapX = ((firstBox.width + secondBox.width) / 2) + padding - Math.abs(firstBox.centerX - secondBox.centerX);
+    const overlapY = ((firstBox.height + secondBox.height) / 2) + padding - Math.abs(firstBox.centerY - secondBox.centerY);
+    return overlapX > 0 && overlapY > 0 ? { x: overlapX, y: overlapY } : null;
+}
+
+function getOverlapShift(first, second, firstBox, secondBox, overlap) {
+    return {
+        x: getAxisOverlapShift(overlap.x, secondBox.centerX - firstBox.centerX, getOverlapFallback(first, second, 37, 19)),
+        y: getAxisOverlapShift(overlap.y, secondBox.centerY - firstBox.centerY, getOverlapFallback(first, second, 13, 17))
+    };
+}
+
+function getOverlapFallback(first, second, firstMultiplier, secondMultiplier) {
+    return ((first.id * firstMultiplier + second.id * secondMultiplier) % 2 === 0) ? 1 : -1;
+}
+
+function getAxisOverlapShift(overlap, delta, fallback) {
+    const direction = Math.abs(delta) < 0.001 ? fallback : Math.sign(delta);
+    return Math.max(1, Math.round((overlap / 2) * direction));
+}
+
+function applyOverlapShift(first, second, shift) {
+    first.x -= shift.x;
+    second.x += shift.x;
+    first.y -= shift.y;
+    second.y += shift.y;
 }
 
 async function persistAllNodePositions() {
