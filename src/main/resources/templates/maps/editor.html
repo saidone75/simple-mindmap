@@ -28,6 +28,10 @@
 <div class="editor-page">
     <header class="editor-topbar">
         <a class="back-link" th:href="@{/maps}">← Torna alle mappe</a>
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <span th:text="${username}">utente</span>
+            <button type="submit" class="secondary-btn small-btn">Esci</button>
+        </form>
         <div class="editor-title-actions-row">
             <div class="map-title-row">
                 <h1 id="map-title" th:text="${map.title}">Titolo mappa</h1>

@@ -19,6 +19,10 @@ app:
   openai:
     api-key: ${OPENAI_API_KEY:}
     model: ${OPENAI_MODEL:gpt-5.4-nano}
+  security:
+    initial-user:
+      username: ${INITIAL_USER_LOGIN:}
+      password: ${INITIAL_USER_PASSWORD:}
 ai:
   embedding:
     model-url: ${AI_EMBEDDING_MODEL_URL:djl://ai.djl.huggingface.pytorch/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}

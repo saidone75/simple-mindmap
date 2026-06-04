@@ -31,6 +31,10 @@
             <h1>🐇 Alice's Simple Mind Maps</h1>
             <p>Un editor semplice da usare per creare mappe mentali colorate e stampabili.</p>
         </div>
+        <form th:action="@{/logout}" method="post" class="logout-form">
+            <span th:text="${username}">utente</span>
+            <button type="submit" class="secondary-btn small-btn">Esci</button>
+        </form>
     </header>
 
     <div th:if="${message}" class="flash-ok" th:text="${message}"></div>

@@ -21,5 +21,11 @@ package org.saidone.mindmaps.repository;
 import org.saidone.mindmaps.model.MindMap;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface MindMapRepository extends JpaRepository<MindMap, Long> {
+    List<MindMap> findByOwnerUsernameIgnoreCaseOrderByUpdatedAtDesc(String username);
+
+    Optional<MindMap> findByIdAndOwnerUsernameIgnoreCase(Long id, String username);
 }

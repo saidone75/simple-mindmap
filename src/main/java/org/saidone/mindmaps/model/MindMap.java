@@ -44,6 +44,10 @@ public class MindMap {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private AppUser owner;
+
     @PrePersist
     public void prePersist() {
         if (stylePreset == null || stylePreset.isBlank()) {

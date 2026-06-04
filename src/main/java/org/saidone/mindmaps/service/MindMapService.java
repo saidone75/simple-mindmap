@@ -28,6 +28,7 @@ import org.saidone.mindmaps.model.MindMap;
 import org.saidone.mindmaps.model.Node;
 import org.saidone.mindmaps.repository.MindMapRepository;
 import org.saidone.mindmaps.repository.NodeRepository;
+import org.saidone.mindmaps.security.CurrentUserService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -60,13 +61,12 @@ public class MindMapService {
     private final MindMapRepository mindMapRepository;
     private final NodeRepository nodeRepository;
     private final WikimediaImageSearchService wikimediaImageSearchService;
+    private final CurrentUserService currentUserService;
 
     private final NodeMapper nodeMapper;
 
     public List<MindMap> findAll() {
-        return mindMapRepository.findAll().stream()
-                .sorted((a, b) -> b.getUpdatedAt().compareTo(a.getUpdatedAt()))
-                .toList();
+        return mindMapRepository.findByOwnerUsernameIgnoreCaseOrderByUpdatedAtDesc(currentUserService.getCurrentUser().getUsername());
     }
 
     public MindMapDto findMapWithNodes(Long id) {
@@ -84,6 +84,7 @@ public class MindMapService {
         val map = new MindMap();
         map.setTitle(request.getTitle().trim());
         map.setStylePreset(DEFAULT_STYLE_PRESET);
+        map.setOwner(currentUserService.getCurrentUser());
         val savedMap = mindMapRepository.save(map);
 
         val root = new Node();
@@ -122,6 +123,7 @@ public class MindMapService {
         val map = new MindMap();
         map.setTitle(title);
         map.setStylePreset(DEFAULT_STYLE_PRESET);
+        map.setOwner(currentUserService.getCurrentUser());
         val saved = mindMapRepository.save(map);
 
         val root = createNode(saved.getId(), null, title, "Breve descrizione del tema principale.", 620, 260, DEFAULT_ROOT_NODE_COLOR);
@@ -164,6 +166,7 @@ public class MindMapService {
         val map = new MindMap();
         map.setTitle(title);
         map.setStylePreset(normalizeStylePreset(generatedMap.getStylePreset()));
+        map.setOwner(currentUserService.getCurrentUser());
         val saved = mindMapRepository.save(map);
 
         val createdNodeIdsByIndex = new ArrayList<Long>();
@@ -203,6 +206,7 @@ public class MindMapService {
     @Transactional
     public NodeDto addNode(Long mapId, CreateNodeRequest request) {
         getMap(mapId);
+        validateParentBelongsToMap(mapId, request.getParentId());
         val node = new Node();
         node.setMapId(mapId);
         node.setParentId(request.getParentId());
@@ -229,10 +233,21 @@ public class MindMapService {
     public NodeDto updateNode(Long nodeId, UpdateNodeRequest request) {
         val node = nodeRepository.findById(nodeId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
-
+        getMap(node.getMapId());
         applyNodeUpdate(node, request);
 
         return nodeMapper.toDto(nodeRepository.save(node));
+    }
+
+    private void validateParentBelongsToMap(Long mapId, Long parentId) {
+        if (parentId == null) {
+            return;
+        }
+        val parent = nodeRepository.findById(parentId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo padre non trovato"));
+        if (!mapId.equals(parent.getMapId())) {
+            throw new ResponseStatusException(NOT_FOUND, "Nodo padre non trovato");
+        }
     }
 
     private void applyNodeUpdate(Node node, UpdateNodeRequest request) {
@@ -269,6 +284,7 @@ public class MindMapService {
     public void deleteNode(Long nodeId) {
         val node = nodeRepository.findById(nodeId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Nodo non trovato"));
+        getMap(node.getMapId());
 
         val mapNodes = nodeRepository.findByMapIdOrderByIdAsc(node.getMapId());
         deleteRecursive(nodeId, mapNodes);
@@ -282,6 +298,7 @@ public class MindMapService {
         val clonedMap = new MindMap();
         clonedMap.setTitle(sourceMap.getTitle() + " (Copia)");
         clonedMap.setStylePreset(normalizeStylePreset(sourceMap.getStylePreset()));
+        clonedMap.setOwner(sourceMap.getOwner());
         val savedMap = mindMapRepository.save(clonedMap);
         val clonedBySourceId = new ConcurrentHashMap<Long, Node>();
 
@@ -381,7 +398,7 @@ public class MindMapService {
     }
 
     private MindMap getMap(Long id) {
-        return mindMapRepository.findById(id)
+        return mindMapRepository.findByIdAndOwnerUsernameIgnoreCase(id, currentUserService.getCurrentUser().getUsername())
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Mappa non trovata"));
     }
 

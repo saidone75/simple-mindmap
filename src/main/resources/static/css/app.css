@@ -129,6 +129,20 @@ button:hover { background: var(--accent-dark); }
     box-shadow: 0 10px 30px var(--shadow-color);
 }
 .hero-card, .section-card { padding: 24px; margin-bottom: 20px; }
+.hero-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.logout-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-weight: 700;
+}
 .hero-card h1, .editor-topbar h1 { margin: 0; font-size: 2rem; }
 .map-title-row {
     display: inline-flex;

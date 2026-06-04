@@ -18,14 +18,16 @@
 
 package org.saidone.mindmaps.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.dto.CreateMindMapRequest;
 import org.saidone.mindmaps.dto.MapGenerationRequestDto;
 import org.saidone.mindmaps.service.MindMapService;
 import org.saidone.mindmaps.service.ai.MapGenerationApplicationService;
-import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
+
+import java.security.Principal;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -40,7 +42,8 @@ public class MindMapPageController {
     private final MapGenerationApplicationService mapGenerationApplicationService;
 
     @GetMapping
-    public String list(Model model) {
+    public String list(Model model, Principal principal) {
+        model.addAttribute("username", principal.getName());
         if (!model.containsAttribute("mapForm")) {
             model.addAttribute("mapForm", new CreateMindMapRequest());
         }
@@ -51,8 +54,10 @@ public class MindMapPageController {
     @PostMapping
     public String create(@Valid @ModelAttribute("mapForm") CreateMindMapRequest mapForm,
                          BindingResult bindingResult,
-                         Model model) {
+                         Model model,
+                         Principal principal) {
         if (bindingResult.hasErrors()) {
+            model.addAttribute("username", principal.getName());
             model.addAttribute("maps", mindMapService.findAll());
             return "maps/list";
         }
@@ -88,7 +93,8 @@ public class MindMapPageController {
     }
 
     @GetMapping("/{id}")
-    public String editor(@PathVariable Long id, Model model) {
+    public String editor(@PathVariable Long id, Model model, Principal principal) {
+        model.addAttribute("username", principal.getName());
         model.addAttribute("map", mindMapService.findMapWithNodes(id));
         return "maps/editor";
     }
