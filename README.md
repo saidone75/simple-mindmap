@@ -32,6 +32,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 - ✅ Autosave dei nodi
 - ✅ Export PNG
 - ✅ Export PDF stampabile
+- ✅ Login multiutente con mappe isolate per utente
 - ✅ Eliminazione mappe e nodi
 
 ---
@@ -40,8 +41,9 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 
 ### Backend
 - **Java 21**
-- **Spring Boot 3.3.1**
+- **Spring Boot 4.0.6**
 - **Spring Data JPA**
+- **Spring Security**
 - **H2 Database** (persistito su file)
 
 ### Frontend
@@ -77,8 +79,10 @@ mvn -version
 2. Avvia l'app:
 
 ```bash
-mvn spring-boot:run
+INITIAL_USER_LOGIN=alice INITIAL_USER_PASSWORD=password-segreta mvn spring-boot:run
 ```
+
+Se le variabili `INITIAL_USER_LOGIN` e `INITIAL_USER_PASSWORD` sono valorizzate, l'app crea automaticamente l'utente iniziale se non esiste già.
 
 3. Apri nel browser:
 
@@ -114,6 +118,8 @@ http://localhost:8080/maps
 - Database locale H2 persistito su file in:
   - `./data/mindmapdb`
 - Nessuna dipendenza da DB esterno per lo sviluppo iniziale.
+- Gli utenti sono salvati nella tabella `users` con password cifrate.
+- Ogni mappa è collegata all’utente proprietario e l’app mostra/modifica solo le mappe dell’utente autenticato.
 
 ---
 
@@ -128,7 +134,6 @@ http://localhost:8080/maps
 
 - Export PDF server-side
 - Undo/Redo completo
-- Multiutenza con login
 - Libreria icone e sticker
 - Condivisione mappe via link
 
