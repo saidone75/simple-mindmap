@@ -1024,11 +1024,11 @@ function renderNodeActionButtons(group, node, nodeWidth) {
             event.stopPropagation();
             event.preventDefault();
         });
-        button.addEventListener("click", async event => {
+        button.addEventListener("click", event => {
             event.stopPropagation();
             event.preventDefault();
             selectNode(node.id);
-            await action.onClick();
+            action.onClick();
         });
 
         const rect = document.createElementNS(SVG_NS, "rect");
