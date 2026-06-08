@@ -1,7 +1,7 @@
 # 🧠✨ Alice's Simple Mind Maps
 
 Benvenuto in **Alice's Simple Mind Maps**, una web app leggera e immediata per creare mappe mentali in pochi click.
-Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno stack solido e moderno.
+Pensata per essere intuitiva anche per chi non è tecnico e costruita con uno stack solido e moderno.
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 ![Java CI](https://github.com/saidone75/simple-mindmaps/actions/workflows/build.yml/badge.svg)
@@ -11,7 +11,7 @@ Pensata per essere intuitiva anche per chi non è tecnico ma costruita con uno s
 
 ## 🚀 Cos'è
 
-Simple MindMap è un'applicazione Java/Spring Boot con interfaccia Thymeleaf che permette di:
+Simple MindMaps è un'applicazione Java/Spring Boot con interfaccia Thymeleaf che permette di:
 
 - creare una nuova mappa,
 - aggiungere rami e sotto-rami,
@@ -25,7 +25,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 ## 🌟 Caratteristiche principali
 
 - ✅ Creazione mappa rapida
-- ✅ Template pronti (Italiano, Scienze, Storia, Geografia)
+- ✅ Template pronti
 - ✅ Generazione mappe con AI
 - ✅ Drag & drop dei nodi
 - ✅ Modifica testo, colore e dimensione font
