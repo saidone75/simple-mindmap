@@ -39,48 +39,65 @@
 
     <div th:if="${message}" class="flash-ok" th:text="${message}"></div>
 
-    <section class="section-card">
-        <h2>Crea mappa con AI</h2>
-        <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
-        <form th:action="@{/maps/ai}" method="post" class="create-form" id="ai-generate-form">
-            <label for="ai-topic">Argomento o descrizione breve</label>
-            <input id="ai-topic" name="topic" type="text" placeholder="Per esempio: Il ciclo dell'acqua" maxlength="160" required>
-            <label for="ai-depth">Profondità massima</label>
-            <select id="ai-depth" name="maxDepth">
-                <option value="2">2 livelli</option>
-                <option value="3" selected>3 livelli</option>
-                <option value="4">4 livelli</option>
-                <option value="5">5 livelli</option>
-            </select>
-            <label class="checkbox-label" for="ai-search-images">
-                <input id="ai-search-images" name="searchWikimediaImages" type="checkbox" value="true">
-                Cerca automaticamente immagini pertinenti su Wikimedia per ogni nodo
-            </label>
-            <label class="checkbox-label" for="ai-include-branch-text">
-                <input id="ai-include-branch-text" name="includeBranchText" type="checkbox" value="true">
-                Genera il testo dei rami
-            </label>
-            <div class="form-row form-row-spaced">
+    <section class="section-card form-card">
+        <div class="section-intro">
+            <span class="section-kicker">✨ Generazione assistita</span>
+            <h2>Crea mappa con AI</h2>
+            <p>Genera automaticamente una mappa di partenza con il servizio AI.</p>
+        </div>
+        <form th:action="@{/maps/ai}" method="post" class="create-form home-form ai-create-form" id="ai-generate-form">
+            <div class="form-field form-field-main">
+                <label for="ai-topic">Argomento o descrizione breve</label>
+                <input id="ai-topic" name="topic" type="text" placeholder="Per esempio: Il ciclo dell'acqua" maxlength="160" required>
+            </div>
+            <div class="form-field form-field-compact">
+                <label for="ai-depth">Profondità massima</label>
+                <select id="ai-depth" name="maxDepth">
+                    <option value="2">2 livelli</option>
+                    <option value="3" selected>3 livelli</option>
+                    <option value="4">4 livelli</option>
+                    <option value="5">5 livelli</option>
+                </select>
+            </div>
+            <div class="checkbox-group">
+                <label class="checkbox-label" for="ai-search-images">
+                    <input id="ai-search-images" name="searchWikimediaImages" type="checkbox" value="true">
+                    <span>Cerca automaticamente immagini pertinenti su Wikimedia per ogni nodo</span>
+                </label>
+                <label class="checkbox-label" for="ai-include-branch-text">
+                    <input id="ai-include-branch-text" name="includeBranchText" type="checkbox" value="true">
+                    <span>Genera il testo dei rami</span>
+                </label>
+            </div>
+            <div class="form-actions">
                 <button type="submit">Crea mappa con AI</button>
             </div>
         </form>
         <div class="field-error" th:if="${aiError}" th:text="${aiError}"></div>
     </section>
 
-    <section class="section-card">
-        <h2>Crea una nuova mappa</h2>
-        <form th:action="@{/maps}" method="post" th:object="${mapForm}" class="create-form">
-            <label for="title">Titolo della mappa</label>
-            <div class="form-row">
+    <section class="section-card form-card compact-form-card">
+        <div class="section-intro">
+            <span class="section-kicker">📝 Da zero</span>
+            <h2>Crea una nuova mappa</h2>
+        </div>
+        <form th:action="@{/maps}" method="post" th:object="${mapForm}" class="create-form home-form compact-create-form">
+            <div class="form-field form-field-main">
+                <label for="title">Titolo della mappa</label>
                 <input id="title" type="text" th:field="*{title}" placeholder="Per esempio: Gli animali" maxlength="100">
+            </div>
+            <div class="form-actions">
                 <button type="submit">Crea mappa</button>
             </div>
             <div class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></div>
         </form>
     </section>
 
-    <section class="section-card">
-        <h2>Modelli pronti</h2>
+    <section class="section-card form-card template-section-card">
+        <div class="section-intro">
+            <span class="section-kicker">🚀 Partenza rapida</span>
+            <h2>Modelli pronti</h2>
+        </div>
         <div class="template-grid">
             <form th:action="@{/maps/template/italiano}" method="post"><button class="template-btn" type="submit">Italiano</button></form>
             <form th:action="@{/maps/template/scienze}" method="post"><button class="template-btn" type="submit">Scienze</button></form>
