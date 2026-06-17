@@ -265,7 +265,7 @@ button:hover { background: var(--accent-dark); }
     gap: 12px;
     flex-wrap: wrap;
 }
-input[type="text"], input[type="url"], select, input[type="range"], input[type="file"], textarea {
+input[type="text"], input[type="url"], input[type="password"], select, input[type="range"], input[type="file"], textarea {
     width: 100%;
     border: 1px solid var(--border);
     border-radius: 14px;
@@ -846,9 +846,14 @@ input[type="file"] {
     gap: 10px;
     min-height: 54px;
     padding: 0 15px;
+    border: 1px solid var(--border);
     border-radius: 18px;
     background: var(--surface-input);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.login-input-wrap:focus-within {
+    border-color: var(--border-action-hover);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 .login-input-wrap input {
     width: 100%;
