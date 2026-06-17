@@ -44,7 +44,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 - **Spring Boot 4.0.6**
 - **Spring Data JPA**
 - **Spring Security**
-- **H2 Database** (persistito su file)
+- **SQLite** (persistito su file)
 
 ### Frontend
 - **Thymeleaf**
@@ -115,8 +115,8 @@ http://localhost:8080/maps
 
 ## 💾 Persistenza dati
 
-- Database locale H2 persistito su file in:
-  - `./data/mindmapdb`
+- Database locale SQLite persistito su file in:
+  - `./data/mindmapdb.sqlite`
 - Nessuna dipendenza da DB esterno per lo sviluppo iniziale.
 - Gli utenti sono salvati nella tabella `users` con password cifrate.
 - Ogni mappa è collegata all’utente proprietario e l’app mostra/modifica solo le mappe dell’utente autenticato.
