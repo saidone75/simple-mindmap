@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: jdbc:sqlite:./data/mindmap.db
+    url: jdbc:sqlite:./data/mindmaps.db
     driver-class-name: org.sqlite.JDBC
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
@@ -10,7 +10,7 @@ spring:
   thymeleaf:
     cache: false
 server:
-  port: 8080
+  port: 9080
 app:
   openai:
     api-key: ${OPENAI_API_KEY:}
