@@ -10,7 +10,7 @@ spring:
   thymeleaf:
     cache: false
 server:
-  port: 8080
+  port: 9080
 app:
   openai:
     api-key: ${OPENAI_API_KEY:}
