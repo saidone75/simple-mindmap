@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form.defaultSuccessUrl("/maps", true).permitAll())
+                .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/maps", true).permitAll())
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout").permitAll());
         return http.build();
     }
