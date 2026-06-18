@@ -283,21 +283,23 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.35; }
 .login-card-bunny {
     position: relative;
     z-index: 1;
-    width: 78px;
-    height: 78px;
+    width: 104px;
+    height: 104px;
     display: grid;
     place-items: center;
     margin: 0 auto 18px;
-    font-size: 2.5rem;
+    font-size: 3.6rem;
     animation: bunny-hop 2.6s ease-in-out infinite;
     transform-origin: 50% 100%;
 }
-.login-card-header, .login-form, .login-alert { position: relative; z-index: 1; }
+.login-card .section-kicker, .login-card-header, .login-form, .login-alert { position: relative; z-index: 1; }
+.login-card .section-kicker { margin-bottom: 14px; text-align: center; }
 .login-card-header { margin-bottom: 22px; text-align: center; }
 .login-card h1 { margin-bottom: 8px; font-size: 2.35rem; line-height: 1; letter-spacing: -0.04em; }
 .login-form { display: grid; gap: 18px; }
 .login-input-wrap { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 15px; border: 1px solid var(--border); border-radius: 18px; background: var(--white); }
 .login-input-wrap input { border: 0; outline: 0; background: var(--transparent); }
+.login-input-wrap input:focus { border: 0; box-shadow: none; }
 .login-submit { min-height: 56px; margin-top: 4px; border-radius: 18px; }
 
 @keyframes bunny-hop {
