@@ -21,6 +21,8 @@ package org.saidone.mindmaps.config;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.saidone.mindmaps.repository.AppUserRepository;
+import org.saidone.mindmaps.security.LoginRateLimitFilter;
+import org.saidone.mindmaps.security.LoginRateLimiter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,12 +32,15 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final AppUserRepository appUserRepository;
+    private final LoginRateLimiter loginRateLimiter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,7 +50,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/login").defaultSuccessUrl("/maps", true).permitAll())
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/maps", true)
+                        .successHandler((request, response, authentication) -> {
+                            loginRateLimiter.recordSuccess(request.getParameter("username"), request.getRemoteAddr());
+                            response.sendRedirect(request.getContextPath() + "/maps");
+                        })
+                        .failureHandler((request, response, exception) -> {
+                            loginRateLimiter.recordFailure(request.getParameter("username"), request.getRemoteAddr());
+                            response.sendRedirect(request.getContextPath() + "/login?error");
+                        })
+                        .permitAll())
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .logout(logout -> logout.logoutSuccessUrl("/login?logout").permitAll());
         return http.build();
     }
