@@ -28,7 +28,7 @@
 <main class="login-shell" aria-labelledby="login-title">
     <section class="login-card" aria-label="Modulo di accesso">
         <p class="section-kicker">Alice's Simple Mind Maps</p>
-        <div class="login-card-bunny" aria-hidden="true">🐇</div>
+        <button type="button" class="login-card-bunny" aria-label="Fai fare una capriola al coniglietto">🐇</button>
         <div class="login-card-header">
             <p>Inserisci le credenziali per ritrovare le tue mappe mentali.</p>
         </div>
@@ -62,5 +62,22 @@
         </form>
     </section>
 </main>
+<script>
+    const bunnyButton = document.querySelector('.login-card-bunny');
+
+    if (bunnyButton) {
+        bunnyButton.addEventListener('click', () => {
+            bunnyButton.classList.remove('is-somersaulting');
+            void bunnyButton.offsetWidth;
+            bunnyButton.classList.add('is-somersaulting');
+        });
+
+        bunnyButton.addEventListener('animationend', (event) => {
+            if (event.animationName === 'bunny-somersault') {
+                bunnyButton.classList.remove('is-somersaulting');
+            }
+        });
+    }
+</script>
 </body>
 </html>
