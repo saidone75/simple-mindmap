@@ -20,6 +20,7 @@ package org.saidone.mindmaps.security;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import lombok.val;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -38,7 +39,7 @@ public class LoginRateLimiter {
             .build();
 
     public boolean isBlocked(String username, String remoteAddress) {
-        var counter = attempts.getIfPresent(key(username, remoteAddress));
+        val counter = attempts.getIfPresent(key(username, remoteAddress));
         return counter != null && counter.get() >= MAX_FAILED_ATTEMPTS;
     }
 
@@ -51,8 +52,8 @@ public class LoginRateLimiter {
     }
 
     private String key(String username, String remoteAddress) {
-        var normalizedUsername = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
-        var normalizedRemoteAddress = remoteAddress == null ? "unknown" : remoteAddress.trim();
+        val normalizedUsername = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
+        val normalizedRemoteAddress = remoteAddress == null ? "unknown" : remoteAddress.trim();
         return normalizedRemoteAddress + ":" + normalizedUsername;
     }
 }
