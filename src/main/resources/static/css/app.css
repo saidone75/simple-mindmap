@@ -232,6 +232,58 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.35; }
 .login-input-wrap input:focus { border: 0; box-shadow: none; }
 .login-submit { min-height: 56px; margin-top: 4px; border-radius: 18px; }
 
+
+@media (max-width: 760px) {
+    body { min-width: 0; }
+    button, .secondary-btn { width: 100%; min-height: 44px; padding: 11px 14px; text-align: center; }
+    .icon-btn { width: auto; min-width: 44px; }
+    .page-shell, .editor-page { padding: 12px; font-size: 0.94rem; }
+    .hero-card, .section-card, .editor-topbar, .canvas-panel, .login-card { border-radius: 18px; box-shadow: 0 8px 22px var(--shadow); }
+    .hero-card, .section-card { padding: 16px; margin-bottom: 14px; }
+    .hero-card, .section-header, .editor-title-actions-row, .topbar-actions, .form-actions, .form-row, .canvas-toolbar, .app-dialog-actions { align-items: stretch; flex-direction: column; }
+    .hero-card h1, .editor-topbar h1 { font-size: clamp(1.45rem, 8vw, 1.85rem); }
+    .logout-form { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+    .logout-form button { width: auto; }
+    .section-kicker, .section-card .section-kicker { font-size: 0.88rem; }
+    .ai-create-form, .compact-create-form { grid-template-columns: 1fr; }
+    .form-field, .form-field-main, .form-field-compact { min-width: 0; }
+    .checkbox-group, .template-grid, .map-grid, .inline-actions { grid-template-columns: 1fr; }
+    .card-actions { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+    .card-actions form, .card-actions a, .card-actions button { width: 100%; }
+
+    .editor-topbar { grid-template-columns: 1fr; padding: 14px; }
+    .editor-topbar .logout-form { justify-self: stretch; }
+    .map-title-row { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+    .map-title-row h1 { overflow-wrap: anywhere; }
+    .topbar-actions { width: 100%; gap: 8px; }
+    .topbar-actions select, .topbar-actions a, .topbar-actions button { width: 100%; }
+    .canvas-panel { padding: 10px; max-height: none; }
+    .canvas-hint { font-size: 0.86rem; line-height: 1.4; }
+    .canvas-toolbar { gap: 8px; width: 100%; }
+    .canvas-toolbar label, .canvas-toolbar span { width: 100%; margin-left: 0; }
+    .canvas-toolbar input, .canvas-toolbar select, #zoom-control, #style-preset-control, #grid-size-control { width: 100%; }
+    .toolbar-checkbox { width: 100%; margin-left: 0; justify-content: flex-start; }
+    .toolbar-checkbox input { width: auto; }
+    .canvas-scroll-area { min-width: 100%; overflow: auto; -webkit-overflow-scrolling: touch; }
+    #mindmap-canvas { width: 100%; min-width: 760px; height: 65vh; touch-action: none; }
+    .node-editor-overlay, .image-editor-overlay { position: sticky; top: 10px; left: 0; width: 100%; max-height: 70vh; margin-bottom: 10px; }
+    .node-context-menu { left: 8px !important; right: 8px; width: auto; min-width: 0; }
+    .app-dialog { width: calc(100% - 20px); }
+    .app-dialog-actions button { width: 100%; }
+    .login-page { padding: 18px 12px; }
+    .login-card { padding: 24px 18px; }
+    .login-card h1 { font-size: 1.9rem; }
+}
+
+@media (min-width: 761px) and (max-width: 1024px) {
+    .page-shell, .editor-page { padding: 18px; }
+    .editor-topbar { grid-template-columns: 1fr; }
+    .editor-topbar .logout-form { justify-self: start; }
+    .topbar-actions { width: 100%; }
+    .canvas-toolbar { align-items: flex-end; }
+    #mindmap-canvas { width: 100%; min-width: 960px; height: 70vh; }
+}
+
 @keyframes bunny-hop {
     0%, 100% { transform: translateY(0) scaleY(1) rotate(0deg); }
     12% { transform: translateY(-8px) scaleY(1.04) rotate(-2deg); }
