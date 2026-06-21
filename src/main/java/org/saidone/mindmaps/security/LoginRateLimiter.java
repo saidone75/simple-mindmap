@@ -54,6 +54,6 @@ public class LoginRateLimiter {
     private String key(String username, String remoteAddress) {
         val normalizedUsername = username == null ? "" : username.trim().toLowerCase(Locale.ROOT);
         val normalizedRemoteAddress = remoteAddress == null ? "unknown" : remoteAddress.trim();
-        return normalizedRemoteAddress + ":" + normalizedUsername;
+        return String.format("%s:%s", normalizedRemoteAddress, normalizedUsername);
     }
 }

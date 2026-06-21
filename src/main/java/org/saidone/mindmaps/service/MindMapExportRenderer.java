@@ -19,6 +19,7 @@
 package org.saidone.mindmaps.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.apache.batik.transcoder.TranscoderException;
 import org.apache.batik.transcoder.TranscoderInput;
 import org.apache.batik.transcoder.TranscoderOutput;
@@ -65,31 +66,31 @@ public class MindMapExportRenderer {
             throw new IllegalArgumentException("SVG payload is required for PNG export");
         }
 
-        var exportSafeSvg = replaceCssVariables(svg);
+        val exportSafeSvg = replaceCssVariables(svg);
 
-        try (var output = new ByteArrayOutputStream()) {
-            var transcoderInput = new TranscoderInput(new ByteArrayInputStream(exportSafeSvg.getBytes(StandardCharsets.UTF_8)));
-            var transcoderOutput = new TranscoderOutput(output);
-            var transcoder = new PNGTranscoder();
+        try (val output = new ByteArrayOutputStream()) {
+            val transcoderInput = new TranscoderInput(new ByteArrayInputStream(exportSafeSvg.getBytes(StandardCharsets.UTF_8)));
+            val transcoderOutput = new TranscoderOutput(output);
+            val transcoder = new PNGTranscoder();
             transcoder.transcode(transcoderInput, transcoderOutput);
             return output.toByteArray();
         }
     }
 
     public byte[] renderSvgPdf(String svg, String format) throws TranscoderException, IOException {
-        var pngBytes = renderSvgPng(svg);
-        var image = ImageIO.read(new ByteArrayInputStream(pngBytes));
+        val pngBytes = renderSvgPng(svg);
+        val image = ImageIO.read(new ByteArrayInputStream(pngBytes));
         if (image == null) {
             throw new IllegalStateException("Unable to decode generated PNG for PDF export");
         }
 
-        var pageSize = resolvePageSize(normalizePdfFormat(format));
+        val pageSize = resolvePageSize(normalizePdfFormat(format));
 
-        try (var document = new PDDocument(); var pdfOutput = new ByteArrayOutputStream()) {
-            var page = new PDPage(pageSize);
+        try (val document = new PDDocument(); val pdfOutput = new ByteArrayOutputStream()) {
+            val page = new PDPage(pageSize);
             document.addPage(page);
 
-            var pdImage = LosslessFactory.createFromImage(document, image);
+            val pdImage = LosslessFactory.createFromImage(document, image);
             drawCenteredImage(document, page, pdImage, image);
 
             document.save(pdfOutput);
@@ -106,11 +107,11 @@ public class MindMapExportRenderer {
             return value;
         }
 
-        var matcher = CSS_VARIABLE_PATTERN.matcher(value);
-        var result = new StringBuilder();
+        val matcher = CSS_VARIABLE_PATTERN.matcher(value);
+        val result = new StringBuilder();
         while (matcher.find()) {
-            var variableName = matcher.group(1);
-            var fallback = matcher.group(2);
+            val variableName = matcher.group(1);
+            val fallback = matcher.group(2);
             var replacement = cssVariables.get(variableName);
             if (!StringUtils.hasText(replacement)) {
                 replacement = StringUtils.hasText(fallback) ? fallback.trim() : "#000000";
@@ -119,7 +120,7 @@ public class MindMapExportRenderer {
         }
         matcher.appendTail(result);
 
-        var replaced = result.toString();
+        val replaced = result.toString();
         return CSS_VARIABLE_PATTERN.matcher(replaced).find()
                 ? replaceCssVariables(replaced, cssVariables, depth + 1)
                 : replaced;
@@ -129,13 +130,13 @@ public class MindMapExportRenderer {
         if (!StringUtils.hasText(rawFormat)) {
             return "a4";
         }
-        var normalized = rawFormat.trim().toLowerCase(Locale.ROOT);
+        val normalized = rawFormat.trim().toLowerCase(Locale.ROOT);
         return SUPPORTED_PDF_FORMATS.contains(normalized) ? normalized : "a4";
     }
 
     private Map<String, String> loadCssVariables() {
         try {
-            var css = new ClassPathResource(APP_CSS_RESOURCE).getContentAsString(StandardCharsets.UTF_8);
+            val css = new ClassPathResource(APP_CSS_RESOURCE).getContentAsString(StandardCharsets.UTF_8);
             return resolveCssVariableDeclarations(css);
         } catch (IOException exception) {
             log.warn("Unable to load CSS variables for SVG export from {}", APP_CSS_RESOURCE, exception);
@@ -144,14 +145,14 @@ public class MindMapExportRenderer {
     }
 
     private static Map<String, String> resolveCssVariableDeclarations(String css) {
-        var rawVariables = new HashMap<String, String>();
-        var matcher = CSS_VARIABLE_DECLARATION_PATTERN.matcher(css);
+        val rawVariables = new HashMap<String, String>();
+        val matcher = CSS_VARIABLE_DECLARATION_PATTERN.matcher(css);
         while (matcher.find()) {
             rawVariables.put(matcher.group(1), matcher.group(2).trim());
         }
 
-        var resolvedVariables = new HashMap<String, String>();
-        for (var entry : rawVariables.entrySet()) {
+        val resolvedVariables = new HashMap<String, String>();
+        for (val entry : rawVariables.entrySet()) {
             resolvedVariables.put(entry.getKey(), replaceCssVariables(entry.getValue(), rawVariables, 0));
         }
         return Map.copyOf(resolvedVariables);
@@ -167,20 +168,20 @@ public class MindMapExportRenderer {
     }
 
     private void drawCenteredImage(PDDocument document, PDPage page, PDImageXObject pdImage, BufferedImage image) throws IOException {
-        var pageWidth = page.getMediaBox().getWidth();
-        var pageHeight = page.getMediaBox().getHeight();
+        val pageWidth = page.getMediaBox().getWidth();
+        val pageHeight = page.getMediaBox().getHeight();
 
-        var imageWidth = (float) image.getWidth();
-        var imageHeight = (float) image.getHeight();
+        val imageWidth = (float) image.getWidth();
+        val imageHeight = (float) image.getHeight();
 
-        var scale = Math.min(pageWidth / imageWidth, pageHeight / imageHeight);
-        var drawWidth = imageWidth * scale;
-        var drawHeight = imageHeight * scale;
+        val scale = Math.min(pageWidth / imageWidth, pageHeight / imageHeight);
+        val drawWidth = imageWidth * scale;
+        val drawHeight = imageHeight * scale;
 
-        var offsetX = (pageWidth - drawWidth) / 2;
-        var offsetY = (pageHeight - drawHeight) / 2;
+        val offsetX = (pageWidth - drawWidth) / 2;
+        val offsetY = (pageHeight - drawHeight) / 2;
 
-        try (var content = new PDPageContentStream(document, page)) {
+        try (val content = new PDPageContentStream(document, page)) {
             content.drawImage(pdImage, offsetX, offsetY, drawWidth, drawHeight);
         }
     }
