@@ -26,6 +26,5 @@ import java.util.Optional;
 
 public interface MindMapRepository extends JpaRepository<MindMap, Long> {
     List<MindMap> findByOwnerUsernameIgnoreCaseOrderByUpdatedAtDesc(String username);
-
     Optional<MindMap> findByIdAndOwnerUsernameIgnoreCase(Long id, String username);
 }
