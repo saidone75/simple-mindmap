@@ -41,7 +41,7 @@ Obiettivo: **trasformare idee in una struttura visiva chiara**.
 
 ### Backend
 - **Java 21**
-- **Spring Boot 4.0.6**
+- **Spring Boot 4.0.7**
 - **Spring Data JPA**
 - **Spring Security**
 - **SQLite** (persistito su file)
@@ -103,7 +103,8 @@ http://localhost:8080/maps
 ### Operazioni mappe (backend)
 - Creazione nuova mappa
 - Eliminazione mappa
-- Export HTML stampabile
+- Export PNG da canvas SVG
+- Export PDF stampabile in formato A4/A3
 
 ### Operazioni nodi (backend/API interne)
 - Creazione nodo (principale/figlio)
@@ -125,8 +126,8 @@ http://localhost:8080/maps
 
 ## 📤 Export
 
-- **PNG**: export client-side dal browser
-- **HTML**: export server-side in formato semplice e stampabile
+- **PNG**: il browser invia l'SVG corrente al backend, che lo renderizza e restituisce un file PNG scaricabile.
+- **PDF**: il browser invia l'SVG corrente al backend, che genera un PDF stampabile in formato A4 o A3.
 
 ---
 
